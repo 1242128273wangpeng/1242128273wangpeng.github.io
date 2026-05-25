@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Möbius Band · 莫比乌斯环</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      font-family: "SF Pro Display", "PingFang SC", system-ui, sans-serif;
+      background: #e4eef8;
+      color: #2a3a52;
+    }
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+    canvas { display: block; }
+
+    #panel-cut {
+      position: fixed;
+      top: 16px; left: 16px;
+      width: min(148px, calc(100vw - 32px));
+      z-index: 10;
+      padding: 16px 14px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(120, 170, 230, 0.35);
+      box-shadow: 0 8px 28px rgba(80, 120, 180, 0.18);
+    }
+    #panel-cut h2 {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #2a5080;
+      margin-bottom: 4px;
+    }
+    #panel-cut .subtitle {
+      font-size: 0.68rem;
+      color: rgba(80, 100, 130, 0.75);
+      margin-bottom: 12px;
+    }
+    .cut-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .cut-btns button {
+      flex: none;
+      width: 100%;
+      min-width: 0;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    #panel {
+      position: fixed;
+      top: 16px; right: 16px;
+      width: min(300px, calc(100vw - 32px));
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      z-index: 10;
+      padding: 18px 20px;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(120, 170, 230, 0.35);
+      box-shadow: 0 8px 28px rgba(80, 120, 180, 0.18);
+    }
+    #panel h1 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      margin-bottom: 4px;
+      background: linear-gradient(135deg, #2a8ae8, #1cb88a);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    #panel .subtitle {
+      font-size: 0.72rem;
+      color: rgba(80, 100, 130, 0.75);
+      margin-bottom: 16px;
+    }
+    .control {
+      margin-bottom: 14px;
+    }
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.78rem;
+      color: rgba(40, 55, 80, 0.9);
+      margin-bottom: 6px;
+    }
+    .control label span.val {
+      font-variant-numeric: tabular-nums;
+      color: #3b7fd4;
+      font-size: 0.75rem;
+    }
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(120, 170, 230, 0.35);
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6eb6ff, #4ade80);
+      cursor: pointer;
+      box-shadow: 0 0 8px rgba(110, 182, 255, 0.5);
+    }
+    .row-btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    button {
+      flex: 1;
+      min-width: 80px;
+      padding: 8px 12px;
+      font-size: 0.75rem;
+      border: 1px solid rgba(120, 160, 255, 0.25);
+      border-radius: 8px;
+      background: rgba(220, 235, 255, 0.9);
+      color: #3a5070;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    button:hover {
+      background: rgba(200, 225, 255, 1);
+      border-color: rgba(90, 150, 230, 0.5);
+    }
+    button.active {
+      background: rgba(100, 170, 255, 0.25);
+      border-color: #4a9eff;
+      color: #1a4070;
+    }
+    #hint {
+      position: fixed;
+      bottom: 16px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      font-size: 0.7rem;
+      color: rgba(80, 110, 150, 0.7);
+      pointer-events: none;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+
+  <aside id="panel-cut">
+    <h2>等分剪开</h2>
+    <p class="subtitle">沿带宽方向均分剪开</p>
+    <div class="cut-btns">
+      <button type="button" data-segments="1" class="active" id="cut-1">一等分</button>
+      <button type="button" data-segments="2" id="cut-2">二等分</button>
+      <button type="button" data-segments="3" id="cut-3">三等分</button>
+      <button type="button" data-segments="4" id="cut-4">四等分</button>
+    </div>
+    <div class="control" style="margin-top:14px;margin-bottom:0">
+      <label>拉开距离 <span class="val" id="val-spread">0.75</span></label>
+      <input type="range" id="spread" min="0" max="1" step="0.05" value="0.75" />
+    </div>
+  </aside>
+
+  <aside id="panel">
+    <h1>Möbius Band</h1>
+    <p class="subtitle">莫比乌斯环 · 单面单侧曲面</p>
+
+    <div class="control">
+      <label>主半径 R <span class="val" id="val-R">2.0</span></label>
+      <input type="range" id="R" min="0.8" max="4" step="0.1" value="2" />
+    </div>
+    <div class="control">
+      <label>带宽 w <span class="val" id="val-w">0.6</span></label>
+      <input type="range" id="w" min="0.15" max="1.5" step="0.05" value="0.6" />
+    </div>
+    <div class="control">
+      <label>带面透明 <span class="val" id="val-bandOpacity">0.42</span></label>
+      <input type="range" id="bandOpacity" min="0.12" max="0.85" step="0.03" value="0.42" />
+    </div>
+    <div class="control">
+      <label>蚂蚁数量 <span class="val" id="val-antCount">1</span></label>
+      <input type="range" id="antCount" min="1" max="12" step="1" value="1" />
+    </div>
+    <div class="control">
+      <label>蚂蚁大小 <span class="val" id="val-antSize">1.0</span></label>
+      <input type="range" id="antSize" min="0.35" max="2.5" step="0.05" value="1" />
+    </div>
+    <div class="control">
+      <label>蚂蚁速度 <span class="val" id="val-antSpeed">0.55</span></label>
+      <input type="range" id="antSpeed" min="0.1" max="2" step="0.05" value="0.55" />
+    </div>
+    <div class="control">
+      <label>自转速度 <span class="val" id="val-spin">0.3</span></label>
+      <input type="range" id="spin" min="0" max="2" step="0.05" value="0.3" />
+    </div>
+    <div class="control">
+      <label>金属度 <span class="val" id="val-metal">0.08</span></label>
+      <input type="range" id="metal" min="0" max="1" step="0.05" value="0.08" />
+    </div>
+    <div class="control">
+      <label>粗糙度 <span class="val" id="val-rough">0.38</span></label>
+      <input type="range" id="rough" min="0" max="1" step="0.05" value="0.38" />
+    </div>
+    <div class="control">
+      <label>色相 <span class="val" id="val-hue">195°</span></label>
+      <input type="range" id="hue" min="0" max="360" step="5" value="195" />
+    </div>
+
+    <div class="row-btns">
+      <button type="button" id="btn-wire" title="线框">线框</button>
+      <button type="button" id="btn-pause" class="active" title="暂停/播放">旋转</button>
+      <button type="button" id="btn-reset" title="重置视角">重置</button>
+    </div>
+  </aside>
+
+    <p id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · 绿点正面 / 橙点反面</p>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+
+    const U_SEG = 128;
+    const V_SEG = 16;
+
+    const params = {
+      R: 2,
+      w: 0.6,
+      segments: 1,
+      spread: 0.75,
+      bandOpacity: 0.42,
+      antCount: 1,
+      antSize: 1,
+      antSpeed: 0.55,
+      spin: 0.3,
+      metal: 0.08,
+      rough: 0.38,
+      hue: 195,
+      wireframe: false,
+      rotating: true,
+    };
+
+    const container = document.getElementById("canvas-container");
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xe8f2fc);
+    scene.fog = new THREE.Fog(0xf0f6ff, 18, 42);
+
+    const camera = new THREE.PerspectiveCamera(
+      50,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      100
+    );
+    camera.position.set(5.5, 3.2, 5.5);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = false;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.35;
+    renderer.sortObjects = true;
+    container.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 2;
+    controls.maxDistance = 20;
+    controls.target.set(0, 0, 0);
+
+    const hemi = new THREE.HemisphereLight(0xffffff, 0xc8daf0, 1.15);
+    scene.add(hemi);
+
+    const ambient = new THREE.AmbientLight(0xffffff, 0.72);
+    scene.add(ambient);
+
+    const keyLight = new THREE.DirectionalLight(0xfffef8, 1.6);
+    keyLight.position.set(5, 10, 6);
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0xe8f4ff, 0.95);
+    fillLight.position.set(-6, 4, -3);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xffd8f0, 0.75);
+    rimLight.position.set(2, 0, 8);
+    scene.add(rimLight);
+
+    const warmLight = new THREE.DirectionalLight(0xfff0d8, 0.55);
+    warmLight.position.set(-2, -3, 5);
+    scene.add(warmLight);
+
+    const grid = new THREE.GridHelper(12, 24, 0xa8c0e0, 0xd0dff0);
+    grid.position.y = -2.5;
+    scene.add(grid);
+
+    let mobiusSegments = [];
+    let cutEdgeLines = [];
+    let mobiusMaterial = null;
+    let cutEdgeMaterial = null;
+    const mobiusGroup = new THREE.Group();
+    scene.add(mobiusGroup);
+
+    const antsGroup = new THREE.Group();
+    mobiusGroup.add(antsGroup);
+    let antInstances = [];
+    let spreadCurrent = 0;
+    let spreadTarget = 0;
+    let lastRebuildSpread = -1;
+
+    function hslColor(h, s, l) {
+      const c = new THREE.Color();
+      c.setHSL(h / 360, s, l);
+      return c;
+    }
+
+    const INNER_HUE_OFFSET = 320;
+    const OUTER_HUE_OFFSET = 145;
+    const INNER_SAT = 0.96;
+    const OUTER_SAT = 0.9;
+    const INNER_LIGHT = 0.36;
+    const OUTER_LIGHT = 0.88;
+
+    function mobiusPoint(R, w, u, v) {
+      const cu = Math.cos(u);
+      const su = Math.sin(u);
+      const ch = Math.cos(u / 2);
+      const sh = Math.sin(u / 2);
+      const scale = R + v * ch;
+      return new THREE.Vector3(scale * cu, scale * su, v * sh);
+    }
+
+    function mobiusFrame(R, w, u, v) {
+      const eps = 1e-4;
+      const pos = mobiusPoint(R, w, u, v);
+      const posU = mobiusPoint(R, w, u + eps, v);
+      const posV = mobiusPoint(R, w, u, v + eps);
+      const tangent = posU.sub(pos).normalize();
+      const bitangent = posV.sub(pos);
+      const normal = new THREE.Vector3().crossVectors(tangent, bitangent).normalize();
+      const right = new THREE.Vector3().crossVectors(normal, tangent).normalize();
+      return { pos, tangent, normal, right };
+    }
+
+    function createAnt(legsOut) {
+      const ant = new THREE.Group();
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: 0x1c1510,
+        roughness: 0.55,
+        metalness: 0.05,
+      });
+      const accentMat = new THREE.MeshStandardMaterial({
+        color: 0x3d2818,
+        roughness: 0.5,
+      });
+
+      const s = 0.11;
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.22 * s, 10, 10), bodyMat);
+      head.position.set(0, 0, 0.55 * s);
+      ant.add(head);
+
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
+      const eyeGeo = new THREE.SphereGeometry(0.06 * s, 6, 6);
+      const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+      eyeL.position.set(-0.1 * s, 0.08 * s, 0.62 * s);
+      ant.add(eyeL);
+      const eyeR = eyeL.clone();
+      eyeR.position.x *= -1;
+      ant.add(eyeR);
+
+      const antennaMat = new THREE.MeshStandardMaterial({ color: 0x2a2018 });
+      const antGeo = new THREE.CylinderGeometry(0.015 * s, 0.02 * s, 0.35 * s, 6);
+      const antL = new THREE.Mesh(antGeo, antennaMat);
+      antL.position.set(-0.08 * s, 0.12 * s, 0.7 * s);
+      antL.rotation.x = -0.5;
+      antL.rotation.z = 0.35;
+      ant.add(antL);
+      const antR = antL.clone();
+      antR.position.x *= -1;
+      antR.rotation.z *= -1;
+      ant.add(antR);
+
+      const thorax = new THREE.Mesh(
+        new THREE.SphereGeometry(0.28 * s, 10, 10),
+        accentMat
+      );
+      thorax.scale.set(1.1, 0.85, 1.35);
+      thorax.position.set(0, 0, 0.15 * s);
+      ant.add(thorax);
+
+      const abdomen = new THREE.Mesh(
+        new THREE.SphereGeometry(0.32 * s, 10, 10),
+        bodyMat
+      );
+      abdomen.scale.set(1.15, 0.9, 1.5);
+      abdomen.position.set(0, 0, -0.35 * s);
+      ant.add(abdomen);
+
+      const legMat = new THREE.MeshStandardMaterial({ color: 0x15100c, roughness: 0.6 });
+      const legPairs = [
+        [-1, 0.22], [-1, -0.02], [-1, -0.26],
+        [1, 0.22], [1, -0.02], [1, -0.26],
+      ];
+      legPairs.forEach(([side, z], i) => {
+        const leg = new THREE.Group();
+        leg.position.set(side * 0.2 * s, -0.05 * s, z * s);
+
+        const upper = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.025 * s, 0.03 * s, 0.22 * s, 5),
+          legMat
+        );
+        upper.position.set(side * 0.08 * s, -0.08 * s, 0);
+        upper.rotation.z = side * 0.9;
+        leg.add(upper);
+
+        const lower = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.02 * s, 0.015 * s, 0.2 * s, 5),
+          legMat
+        );
+        lower.position.set(side * 0.18 * s, -0.2 * s, 0.04 * s);
+        lower.rotation.z = side * 1.1;
+        leg.add(lower);
+
+        ant.add(leg);
+        legsOut.push({ leg, side, phase: i * 1.05 });
+      });
+
+      ant.renderOrder = 10;
+      ant.traverse((obj) => {
+        if (obj.isMesh && obj.material) {
+          obj.material.depthWrite = true;
+          obj.material.transparent = false;
+          if (obj.material.emissive) {
+            obj.material.emissive.setHex(0x221100);
+            obj.material.emissiveIntensity = 0.35;
+          }
+        }
+      });
+      return ant;
+    }
+
+    const ANT_BASE_SCALE = 1.45;
+
+    function antVTrackFor(antIndex, total) {
+      const n = Math.round(params.segments);
+      const w = params.w;
+      const halfW = w / 2;
+      if (n <= 1) {
+        if (total <= 1) return 0.12 * w;
+        const t = total > 1 ? antIndex / (total - 1) : 0.5;
+        return -halfW * 0.72 + t * w * 0.72;
+      }
+      const stripIdx = antIndex % n;
+      const { vMin, vMax } = segmentVRange(n, stripIdx, w);
+      return (vMin + vMax) * 0.5;
+    }
+
+    function antStripFor(antIndex) {
+      const n = Math.round(params.segments);
+      if (n <= 1) return 0;
+      return antIndex % n;
+    }
+
+    function disposeAntInstance(inst) {
+      antsGroup.remove(inst.ant);
+      antsGroup.remove(inst.marker);
+      inst.ant.traverse((obj) => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          mats.forEach((m) => m.dispose());
+        }
+      });
+      inst.marker.geometry.dispose();
+      inst.marker.material.dispose();
+    }
+
+    function createAntInstance(index, total) {
+      const legs = [];
+      const ant = createAnt(legs);
+      const marker = new THREE.Mesh(
+        new THREE.SphereGeometry(1, 10, 10),
+        new THREE.MeshBasicMaterial({
+          color: 0xff5533,
+          depthTest: true,
+          depthWrite: true,
+        })
+      );
+      marker.renderOrder = 11;
+      antsGroup.add(ant);
+      antsGroup.add(marker);
+      return {
+        ant,
+        marker,
+        legs,
+        u: (index / total) * Math.PI * 2,
+        walkPhase: index * 0.85,
+        stripIndex: antStripFor(index),
+      };
+    }
+
+    function syncAntCount() {
+      const target = Math.round(params.antCount);
+      while (antInstances.length < target) {
+        antInstances.push(createAntInstance(antInstances.length, target));
+      }
+      while (antInstances.length > target) {
+        disposeAntInstance(antInstances.pop());
+      }
+      antInstances.forEach((inst, i) => {
+        inst.stripIndex = antStripFor(i);
+      });
+      applyAntSize();
+    }
+
+    function applyAntSize() {
+      const s = ANT_BASE_SCALE * params.antSize;
+      antInstances.forEach((inst) => {
+        inst.ant.scale.setScalar(s);
+      });
+    }
+
+    function updateAntPoses(dt) {
+      const { R, w, antSpeed } = params;
+      const n = Math.round(params.segments);
+      const total = antInstances.length;
+      const eps = 1e-4;
+      const uFull = Math.PI * 2;
+
+      antInstances.forEach((inst, index) => {
+        inst.u = (inst.u + antSpeed * dt) % uFull;
+        inst.walkPhase += dt * 14;
+        inst.stripIndex = antStripFor(index);
+
+        const k = inst.stripIndex;
+        const vTrack = antVTrackFor(index, total);
+        const pos = applySpread(R, w, inst.u, vTrack, spreadCurrent, k, n);
+        const posU = applySpread(R, w, inst.u + eps, vTrack, spreadCurrent, k, n);
+        const posV = applySpread(R, w, inst.u, vTrack + eps, spreadCurrent, k, n);
+        const tangent = new THREE.Vector3().subVectors(posU, pos).normalize();
+        const bitangent = new THREE.Vector3().subVectors(posV, pos);
+        const normal = new THREE.Vector3().crossVectors(tangent, bitangent).normalize();
+        const lift = 0.055 + Math.sin(inst.walkPhase * 2) * 0.014;
+        inst.ant.position.copy(pos).addScaledVector(normal, lift);
+
+        const worldPos = pos.clone().applyMatrix4(mobiusGroup.matrixWorld);
+        const worldNormal = normal.clone().transformDirection(mobiusGroup.matrixWorld);
+        const toCam = new THREE.Vector3().subVectors(camera.position, worldPos).normalize();
+        const onFrontSide = worldNormal.dot(toCam) > 0;
+        inst.marker.position.copy(pos).addScaledVector(normal, lift * 0.35);
+        inst.marker.material.color.setHex(onFrontSide ? 0x3dbf6e : 0xff4422);
+        const markerPulse = onFrontSide ? 0.85 : 1.15;
+        inst.marker.scale.setScalar(0.038 * params.antSize * markerPulse);
+
+        const z = tangent.clone();
+        const y = normal.clone();
+        const x = new THREE.Vector3().crossVectors(y, z).normalize();
+        y.crossVectors(z, x).normalize();
+        inst.ant.matrix.makeBasis(x, y, z);
+        inst.ant.matrix.setPosition(inst.ant.position);
+        inst.ant.matrixAutoUpdate = false;
+
+        inst.legs.forEach(({ leg, side, phase }) => {
+          const swing = Math.sin(inst.walkPhase + phase) * 0.35;
+          leg.rotation.x = swing;
+          leg.rotation.y = side * 0.08 * Math.cos(inst.walkPhase + phase);
+        });
+      });
+    }
+
+    syncAntCount();
+
+    function gapRatioForSegments(segCount) {
+      if (segCount <= 1) return 0;
+      return 0.045 + (segCount - 1) * 0.012;
+    }
+
+    function segmentVRange(segCount, segIndex, w) {
+      const halfW = w / 2;
+      if (segCount <= 1) return { vMin: -halfW, vMax: halfW };
+      const gap = w * gapRatioForSegments(segCount);
+      const stripW = (w - segCount * gap) / segCount;
+      const vMin = -halfW + segIndex * (stripW + gap);
+      return { vMin, vMax: vMin + stripW };
+    }
+
+    function stripSpreadIndex(segIndex, segCount) {
+      return segIndex - (segCount - 1) * 0.5;
+    }
+
+    function mobiusBitangent(R, w, u, v) {
+      const p = mobiusPoint(R, w, u, v);
+      const pV = mobiusPoint(R, w, u, v + 1e-4);
+      return pV.sub(p).normalize();
+    }
+
+    function applySpread(R, w, u, v, spread, segIndex, segCount) {
+      const p = mobiusPoint(R, w, u, v);
+      if (spread <= 0 || segCount <= 1) return p;
+      const idx = stripSpreadIndex(segIndex, segCount);
+      if (idx === 0) return p;
+      return p.addScaledVector(mobiusBitangent(R, w, u, v), spread * idx);
+    }
+
+    function recalcSpreadTarget() {
+      const n = Math.round(params.segments);
+      spreadTarget =
+        n <= 1 ? 0 : params.spread * params.w * (0.55 + n * 0.18);
+    }
+
+    function vertexColorAt(u, v, halfW, baseHue, segIndex, segCount) {
+      const sideSign = v * Math.cos(u * 0.5);
+      const edge = THREE.MathUtils.smoothstep(-halfW * 0.02, halfW * 0.02, sideSign);
+      const segNudge = segCount > 1 ? segIndex * (28 / segCount) : 0;
+
+      const inner = hslColor(
+        (baseHue + INNER_HUE_OFFSET + segNudge) % 360,
+        INNER_SAT,
+        INNER_LIGHT
+      );
+      const outer = hslColor(
+        (baseHue + OUTER_HUE_OFFSET + segNudge) % 360,
+        OUTER_SAT,
+        OUTER_LIGHT
+      );
+      return inner.lerp(outer, edge);
+    }
+
+    function buildMobiusGeometry(R, w, uSeg, vSeg, baseHue, vMin, vMax, segIndex, segCount, spread) {
+      const positions = [];
+      const normals = [];
+      const colors = [];
+      const uvs = [];
+      const indices = [];
+
+      const halfW = w / 2;
+      const uFull = Math.PI * 2;
+      const vSpan = vMax - vMin;
+
+      for (let i = 0; i <= uSeg; i++) {
+        const u = (i / uSeg) * uFull;
+
+        for (let j = 0; j <= vSeg; j++) {
+          const t = j / vSeg;
+          const v = vMin + t * vSpan;
+
+          const p = applySpread(R, w, u, v, spread, segIndex, segCount);
+          positions.push(p.x, p.y, p.z);
+
+          const du = 1e-4;
+          const dv = 1e-4;
+          const p1 = applySpread(R, w, u + du, v, spread, segIndex, segCount);
+          const pV = applySpread(R, w, u, v + dv, spread, segIndex, segCount);
+
+          const tu = new THREE.Vector3().subVectors(p1, p);
+          const tv = new THREE.Vector3().subVectors(pV, p);
+          const n = new THREE.Vector3().crossVectors(tu, tv).normalize();
+          normals.push(n.x, n.y, n.z);
+
+          const vc = vertexColorAt(u, v, halfW, baseHue, segIndex, segCount);
+          colors.push(vc.r, vc.g, vc.b);
+
+          uvs.push(i / uSeg, t);
+        }
+      }
+
+      for (let i = 0; i < uSeg; i++) {
+        for (let j = 0; j < vSeg; j++) {
+          const a = i * (vSeg + 1) + j;
+          const b = a + vSeg + 1;
+          indices.push(a, b, a + 1);
+          indices.push(b, b + 1, a + 1);
+        }
+      }
+
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+      geo.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+      geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+      geo.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+      geo.setIndex(indices);
+      geo.computeBoundingSphere();
+      return geo;
+    }
+
+    function buildCutEdgeAlongU(R, w, v, segIndex, segCount, spread) {
+      const pts = [];
+      const steps = U_SEG;
+      for (let i = 0; i <= steps; i++) {
+        const u = (i / steps) * Math.PI * 2;
+        pts.push(applySpread(R, w, u, v, spread, segIndex, segCount));
+      }
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      return new THREE.Line(geo, cutEdgeMaterial);
+    }
+
+    function disposeCutEdges() {
+      cutEdgeLines.forEach((line) => {
+        line.geometry.dispose();
+        mobiusGroup.remove(line);
+      });
+      cutEdgeLines = [];
+      if (cutEdgeMaterial) {
+        cutEdgeMaterial.dispose();
+        cutEdgeMaterial = null;
+      }
+    }
+
+    function updateMobius() {
+      mobiusSegments.forEach((mesh) => {
+        mesh.geometry.dispose();
+        mobiusGroup.remove(mesh);
+      });
+      mobiusSegments = [];
+      disposeCutEdges();
+      if (mobiusMaterial) {
+        mobiusMaterial.dispose();
+        mobiusMaterial = null;
+      }
+
+      const n = Math.round(params.segments);
+      const vSegEach = Math.max(6, Math.floor(V_SEG / Math.max(n, 1)));
+
+      mobiusMaterial = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        color: 0xffffff,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.18,
+        metalness: params.metal,
+        roughness: params.rough,
+        transparent: true,
+        opacity: params.bandOpacity,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        wireframe: params.wireframe,
+        flatShading: false,
+      });
+
+      for (let k = 0; k < n; k++) {
+        const { vMin, vMax } = segmentVRange(n, k, params.w);
+        const geo = buildMobiusGeometry(
+          params.R,
+          params.w,
+          U_SEG,
+          vSegEach,
+          params.hue,
+          vMin,
+          vMax,
+          k,
+          n,
+          spreadCurrent
+        );
+        const mesh = new THREE.Mesh(geo, mobiusMaterial);
+        mesh.renderOrder = 0;
+        mobiusGroup.add(mesh);
+        mobiusSegments.push(mesh);
+      }
+
+      if (n > 1) {
+        cutEdgeMaterial = new THREE.LineBasicMaterial({
+          color: 0x2a4568,
+          linewidth: 1,
+        });
+        for (let k = 0; k < n; k++) {
+          const { vMax } = segmentVRange(n, k, params.w);
+          const line = buildCutEdgeAlongU(
+            params.R,
+            params.w,
+            vMax,
+            k,
+            n,
+            spreadCurrent
+          );
+          mobiusGroup.add(line);
+          cutEdgeLines.push(line);
+        }
+      }
+      lastRebuildSpread = spreadCurrent;
+    }
+
+    function setSegments(n) {
+      params.segments = n;
+      document.querySelectorAll("#panel-cut .cut-btns button").forEach((btn) => {
+        btn.classList.toggle("active", parseInt(btn.dataset.segments, 10) === n);
+      });
+      recalcSpreadTarget();
+      updateMobius();
+    }
+
+    recalcSpreadTarget();
+    updateMobius();
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+
+      if (params.rotating && params.spin > 0) {
+        mobiusGroup.rotation.z += params.spin * dt;
+      }
+
+      if (Math.abs(spreadTarget - spreadCurrent) > 0.001) {
+        spreadCurrent += (spreadTarget - spreadCurrent) * Math.min(1, dt * 5);
+        if (Math.abs(spreadCurrent - lastRebuildSpread) > 0.004) {
+          updateMobius();
+        }
+      }
+
+      updateAntPoses(dt);
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    function bindSlider(id, key, fmt) {
+      const el = document.getElementById(id);
+      const valEl = document.getElementById("val-" + id);
+      const update = () => {
+        let v = parseFloat(el.value);
+        if (key === "antCount") v = Math.round(v);
+        params[key] = v;
+        if (valEl) valEl.textContent = fmt ? fmt(v) : v;
+      };
+      el.addEventListener("input", () => {
+        update();
+        if (key === "antSize") applyAntSize();
+        if (key === "antCount") syncAntCount();
+        if (["R", "w", "hue"].includes(key)) {
+          updateMobius();
+        } else if (mobiusMaterial && (key === "metal" || key === "rough" || key === "bandOpacity")) {
+          const v = params[key];
+          if (key === "metal") mobiusMaterial.metalness = v;
+          if (key === "rough") mobiusMaterial.roughness = v;
+          if (key === "bandOpacity") mobiusMaterial.opacity = v;
+        }
+      });
+      update();
+    }
+
+    bindSlider("R", "R", (v) => v.toFixed(1));
+    bindSlider("w", "w", (v) => v.toFixed(2));
+    bindSlider("bandOpacity", "bandOpacity", (v) => v.toFixed(2));
+    bindSlider("antCount", "antCount", (v) => String(Math.round(v)));
+    bindSlider("antSize", "antSize", (v) => v.toFixed(2));
+    bindSlider("antSpeed", "antSpeed", (v) => v.toFixed(2));
+    bindSlider("spin", "spin", (v) => v.toFixed(2));
+    bindSlider("metal", "metal", (v) => v.toFixed(2));
+    bindSlider("rough", "rough", (v) => v.toFixed(2));
+    bindSlider("hue", "hue", (v) => Math.round(v) + "°");
+
+    document.getElementById("btn-wire").addEventListener("click", function () {
+      params.wireframe = !params.wireframe;
+      this.classList.toggle("active", params.wireframe);
+      if (mobiusMaterial) mobiusMaterial.wireframe = params.wireframe;
+    });
+
+    document.getElementById("btn-pause").addEventListener("click", function () {
+      params.rotating = !params.rotating;
+      this.classList.toggle("active", params.rotating);
+      this.textContent = params.rotating ? "旋转" : "暂停";
+    });
+
+    document.getElementById("btn-reset").addEventListener("click", () => {
+      camera.position.set(5.5, 3.2, 5.5);
+      controls.target.set(0, 0, 0);
+      mobiusGroup.rotation.set(0, 0, 0);
+      antInstances.forEach((inst, i) => {
+        inst.u = (i / antInstances.length) * Math.PI * 2;
+        inst.walkPhase = i * 0.85;
+      });
+      controls.update();
+    });
+
+    ["R", "w"].forEach((id) => {
+      document.getElementById(id).addEventListener("change", updateMobius);
+    });
+
+    document.querySelectorAll("#panel-cut .cut-btns button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setSegments(parseInt(btn.dataset.segments, 10));
+      });
+    });
+
+    const spreadEl = document.getElementById("spread");
+    const spreadValEl = document.getElementById("val-spread");
+    spreadEl.addEventListener("input", () => {
+      params.spread = parseFloat(spreadEl.value);
+      spreadValEl.textContent = params.spread.toFixed(2);
+      recalcSpreadTarget();
+    });
+    ["metal", "rough", "bandOpacity"].forEach((id) => {
+      document.getElementById(id).addEventListener("input", () => {
+        if (!mobiusMaterial) return;
+        mobiusMaterial.metalness = params.metal;
+        mobiusMaterial.roughness = params.rough;
+        mobiusMaterial.opacity = params.bandOpacity;
+      });
+    });
+    document.getElementById("hue").addEventListener("change", updateMobius);
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
