@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Möbius Band · 莫比乌斯环</title>
+  <title>莫比乌斯环实验室</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       width: 100%; height: 100%;
       overflow: hidden;
       font-family: "SF Pro Display", "PingFang SC", system-ui, sans-serif;
-      background: #e4eef8;
-      color: #2a3a52;
+      background: #0a0e18;
+      color: #c8d4e8;
     }
     #canvas-container {
       position: fixed;
@@ -20,130 +20,74 @@
     }
     canvas { display: block; }
 
-    #drawer-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 90;
-      background: rgba(20, 35, 60, 0.45);
-      opacity: 0;
-      transition: opacity 0.28s ease;
-      -webkit-tap-highlight-color: transparent;
-    }
-    #drawer-overlay.open {
-      opacity: 1;
-    }
-
-    #btn-open-settings {
-      display: none;
-      position: fixed;
-      right: 16px;
-      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-      z-index: 80;
-      padding: 12px 18px;
-      font-size: 0.88rem;
-      font-weight: 600;
-      border-radius: 999px;
-      border: 1px solid rgba(120, 170, 230, 0.45);
-      background: rgba(255, 255, 255, 0.96);
-      color: #2a5080;
-      box-shadow: 0 4px 20px rgba(60, 100, 160, 0.25);
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
-
-    #settings-drawer {
-      z-index: 100;
-    }
-    #settings-drawer .drawer-chrome {
-      display: none;
-    }
-    #settings-drawer .drawer-scroll {
-      display: contents;
-    }
-
-    .panel-card {
-      padding: 16px 14px;
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(120, 170, 230, 0.35);
-      box-shadow: 0 8px 28px rgba(80, 120, 180, 0.18);
-    }
-
-    #panel-cut {
-      width: min(148px, calc(100vw - 32px));
-    }
-    #panel-cut h2 {
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: #2a5080;
-      margin-bottom: 4px;
-    }
-    #panel-cut .subtitle {
-      font-size: 0.68rem;
-      color: rgba(80, 100, 130, 0.75);
-      margin-bottom: 12px;
-    }
-    .cut-btns {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .cut-btns button {
-      flex: none;
-      width: 100%;
-      min-width: 0;
-      padding: 10px 12px;
-      font-size: 0.82rem;
-      font-weight: 500;
-      text-align: center;
-    }
-
     #panel {
-      width: min(300px, calc(100vw - 32px));
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+      width: min(280px, calc(100vw - 32px));
       max-height: calc(100vh - 32px);
       overflow-y: auto;
-      padding: 18px 20px;
+      padding: 18px 16px;
+      border-radius: 14px;
+      background: rgba(18, 24, 38, 0.88);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(80, 120, 180, 0.25);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
     }
     #panel h1 {
-      font-size: 1.05rem;
+      font-size: 1rem;
       font-weight: 600;
       letter-spacing: 0.02em;
       margin-bottom: 4px;
-      background: linear-gradient(135deg, #2a8ae8, #1cb88a);
+      background: linear-gradient(135deg, #6eb6ff, #a78bfa);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
     #panel .subtitle {
-      font-size: 0.72rem;
-      color: rgba(80, 100, 130, 0.75);
+      font-size: 0.7rem;
+      color: rgba(140, 160, 190, 0.75);
       margin-bottom: 16px;
     }
+    .section {
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(80, 110, 160, 0.2);
+    }
+    .section:last-of-type {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    .section-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #8ab4f0;
+      margin-bottom: 10px;
+    }
     .control {
-      margin-bottom: 14px;
+      margin-bottom: 10px;
     }
     .control label {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      font-size: 0.78rem;
-      color: rgba(40, 55, 80, 0.9);
+      font-size: 0.75rem;
+      color: rgba(180, 200, 230, 0.9);
       margin-bottom: 6px;
     }
     .control label span.val {
       font-variant-numeric: tabular-nums;
-      color: #3b7fd4;
-      font-size: 0.75rem;
+      color: #ff9a4a;
+      font-size: 0.72rem;
     }
     input[type="range"] {
       width: 100%;
       height: 4px;
       -webkit-appearance: none;
       appearance: none;
-      background: rgba(120, 170, 230, 0.35);
+      background: rgba(80, 120, 180, 0.35);
       border-radius: 2px;
       outline: none;
     }
@@ -151,201 +95,105 @@
       -webkit-appearance: none;
       width: 14px; height: 14px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #6eb6ff, #4ade80);
+      background: linear-gradient(135deg, #ff9a4a, #ff6b35);
       cursor: pointer;
-      box-shadow: 0 0 8px rgba(110, 182, 255, 0.5);
-    }
-    @media (pointer: coarse) {
-      input[type="range"] {
-        height: 6px;
-      }
-      input[type="range"]::-webkit-slider-thumb {
-        width: 22px;
-        height: 22px;
-      }
-      button {
-        min-height: 44px;
-        font-size: 0.82rem;
-      }
-      .cut-btns button {
-        min-height: 44px;
-      }
+      box-shadow: 0 0 10px rgba(255, 120, 50, 0.6);
     }
     .row-btns {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
-      margin-top: 12px;
+      margin-top: 8px;
     }
     button {
       flex: 1;
-      min-width: 80px;
-      padding: 8px 12px;
-      font-size: 0.75rem;
-      border: 1px solid rgba(120, 160, 255, 0.25);
+      min-width: 72px;
+      padding: 8px 10px;
+      font-size: 0.72rem;
+      border: 1px solid rgba(100, 140, 200, 0.3);
       border-radius: 8px;
-      background: rgba(220, 235, 255, 0.9);
-      color: #3a5070;
+      background: rgba(40, 55, 85, 0.9);
+      color: #b8cce8;
       cursor: pointer;
       transition: background 0.15s, border-color 0.15s;
     }
     button:hover {
-      background: rgba(200, 225, 255, 1);
-      border-color: rgba(90, 150, 230, 0.5);
+      background: rgba(55, 75, 110, 1);
+      border-color: rgba(120, 170, 230, 0.5);
     }
     button.active {
-      background: rgba(100, 170, 255, 0.25);
-      border-color: #4a9eff;
-      color: #1a4070;
+      background: rgba(255, 140, 60, 0.22);
+      border-color: #ff8c3a;
+      color: #ffc090;
     }
-    #hint {
-      position: fixed;
-      bottom: 16px; left: 50%;
-      transform: translateX(-50%);
-      z-index: 5;
-      font-size: 0.7rem;
-      color: rgba(80, 110, 150, 0.7);
-      pointer-events: none;
-      text-align: center;
-      max-width: calc(100vw - 120px);
-      padding: 0 8px;
+    button.btn-primary {
+      background: linear-gradient(135deg, rgba(255, 140, 60, 0.35), rgba(255, 90, 40, 0.25));
+      border-color: rgba(255, 140, 60, 0.55);
+      color: #ffd0a8;
+    }
+    button.btn-demo {
+      background: linear-gradient(135deg, rgba(130, 90, 220, 0.4), rgba(90, 60, 180, 0.35));
+      border-color: rgba(160, 120, 255, 0.5);
+      color: #ddd0ff;
+      flex: 1 1 100%;
+      margin-top: 4px;
+    }
+    .mode-btns {
+      display: flex;
+      gap: 6px;
+    }
+    .mode-btns button {
+      flex: 1;
+      min-width: 0;
+      padding: 7px 4px;
+      font-size: 0.68rem;
+    }
+    .cut-btns {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+    }
+    .cut-btns button {
+      min-width: 0;
+      padding: 7px 2px;
+      font-size: 0.62rem;
+    }
+    button.btn-cut.active {
+      background: rgba(80, 200, 120, 0.28);
+      border-color: #5cd68a;
+      color: #b8f0c8;
+    }
+    .hint-text {
+      font-size: 0.65rem;
+      color: rgba(140, 160, 190, 0.65);
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+    #status {
+      margin-top: 12px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 0.68rem;
+      line-height: 1.4;
+      background: rgba(40, 80, 50, 0.35);
+      border: 1px solid rgba(80, 180, 100, 0.35);
+      color: #8fd4a0;
+    }
+    #status.pending {
+      background: rgba(60, 55, 30, 0.35);
+      border-color: rgba(200, 160, 60, 0.35);
+      color: #e8c878;
     }
 
-    .hint-mobile {
-      display: none;
-      position: fixed;
-      bottom: 16px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 5;
-      font-size: 0.7rem;
-      color: rgba(80, 110, 150, 0.7);
-      pointer-events: none;
-      text-align: center;
-      max-width: calc(100vw - 32px);
-      padding: 0 8px;
-    }
-
-    @media (min-width: 769px) {
-      #settings-drawer {
-        display: contents;
-      }
-      #panel-cut {
-        position: fixed;
-        top: 16px;
-        left: 16px;
-        z-index: 10;
-      }
+    @media (max-width: 480px) {
       #panel {
-        position: fixed;
-        top: 16px;
-        right: 16px;
-        z-index: 10;
-      }
-    }
-
-    @media (max-width: 768px) {
-      #drawer-overlay {
-        display: block;
-        pointer-events: none;
-      }
-      #drawer-overlay.open {
-        pointer-events: auto;
-      }
-      #btn-open-settings {
-        display: block;
-      }
-      #hint {
-        bottom: calc(68px + env(safe-area-inset-bottom, 0px));
-        font-size: 0.65rem;
-      white-space: normal;
-      line-height: 1.35;
-    }
-      .hint-desktop { display: none; }
-      .hint-mobile { display: block; }
-      body.drawer-open .hint-mobile {
-        opacity: 0;
-      }
-
-      #settings-drawer {
-        display: flex;
-        flex-direction: column;
-        position: fixed;
+        top: auto;
+        bottom: 0;
         left: 0;
         right: 0;
-        bottom: 0;
-        max-height: min(88vh, 640px);
-        background: #f4f8fd;
-        border-radius: 18px 18px 0 0;
-        box-shadow: 0 -8px 32px rgba(40, 70, 120, 0.2);
-        transform: translateY(100%);
-        transition: transform 0.32s cubic-bezier(0.32, 0.72, 0, 1);
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-      }
-      #settings-drawer.open {
-        transform: translateY(0);
-      }
-      #settings-drawer .drawer-chrome {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-shrink: 0;
-        padding: 10px 16px 8px;
-        border-bottom: 1px solid rgba(120, 170, 230, 0.25);
-        background: rgba(255, 255, 255, 0.95);
-        border-radius: 18px 18px 0 0;
-      }
-      #settings-drawer .drawer-grab {
-        position: absolute;
-        top: 8px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 36px;
-        height: 4px;
-        border-radius: 2px;
-        background: rgba(120, 150, 190, 0.45);
-      }
-      #settings-drawer .drawer-title {
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: #2a5080;
-        margin-left: 4px;
-      }
-      #settings-drawer .drawer-close {
-        flex: none;
-        min-width: 44px;
-        min-height: 44px;
-        padding: 0;
-        font-size: 1.25rem;
-        line-height: 1;
-        border-radius: 10px;
-        background: rgba(220, 235, 255, 0.9);
-      }
-      #settings-drawer .drawer-scroll {
-        display: block;
-        flex: 1;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        overscroll-behavior: contain;
-        padding: 12px 14px 20px;
-      }
-      #panel-cut,
-      #panel {
-        position: static;
         width: 100%;
-        max-height: none;
-        overflow: visible;
-        margin-bottom: 12px;
-        box-shadow: none;
-      }
-      #panel {
-        padding: 16px 14px;
-        margin-bottom: 0;
-      }
-      .cut-btns {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 8px;
+        max-height: 52vh;
+        border-radius: 16px 16px 0 0;
       }
     }
   </style>
@@ -353,89 +201,74 @@
 <body>
   <div id="canvas-container"></div>
 
-  <div id="drawer-overlay" aria-hidden="true"></div>
-  <button type="button" id="btn-open-settings" aria-expanded="false" aria-controls="settings-drawer">
-    设置
-  </button>
+  <aside id="panel">
+    <h1>莫比乌斯环实验室</h1>
+    <p class="subtitle">带宽裁剪 · 边界拉伸</p>
 
-  <div id="settings-drawer" aria-hidden="true">
-    <div class="drawer-chrome">
-      <div class="drawer-grab" aria-hidden="true"></div>
-      <span class="drawer-title">参数设置</span>
-      <button type="button" class="drawer-close" id="drawer-close" aria-label="关闭">×</button>
+    <div class="section">
+      <div class="section-title">选择模式</div>
+      <div class="cut-btns" id="cut-btns">
+        <button type="button" data-segments="1" class="btn-cut active">原状</button>
+        <button type="button" data-segments="2" class="btn-cut">二等分</button>
+        <button type="button" data-segments="3" class="btn-cut">三等分</button>
+        <button type="button" data-segments="4" class="btn-cut">四等分</button>
+        <button type="button" data-segments="5" class="btn-cut">五等分</button>
+      </div>
     </div>
-    <div class="drawer-scroll">
-  <aside id="panel-cut" class="panel-card">
-    <h2>等分剪开</h2>
-    <p class="subtitle">沿带宽方向均分剪开</p>
-    <div class="cut-btns">
-      <button type="button" data-segments="1" class="active" id="cut-1">一等分</button>
-      <button type="button" data-segments="2" id="cut-2">二等分</button>
-      <button type="button" data-segments="3" id="cut-3">三等分</button>
-      <button type="button" data-segments="4" id="cut-4">四等分</button>
+
+    <div class="section">
+      <div class="section-title">神奇剪刀 · 裁剪进度</div>
+      <div class="control">
+        <label>沿环裁剪 <span class="val" id="val-cut">0%</span></label>
+        <input type="range" id="cut" min="0" max="1" step="0.005" value="0" />
+      </div>
+      <div class="row-btns">
+        <button type="button" id="btn-auto-cut" class="btn-primary">自动裁剪</button>
+        <button type="button" id="btn-reset-cut">重置</button>
+      </div>
+      <div class="control" style="margin-top:12px">
+        <label>拉开它们 <span class="val" id="val-spread">0.00</span></label>
+        <input type="range" id="spread" min="0" max="1" step="0.02" value="0" />
+      </div>
+      <p class="hint-text">沿带宽均分剪开后，拖动拉开滑块，看各条带如何在空间中分离。</p>
     </div>
-    <div class="control" style="margin-top:14px;margin-bottom:0">
-      <label>拉开距离 <span class="val" id="val-spread">0.75</span></label>
-      <input type="range" id="spread" min="0" max="1" step="0.05" value="0.75" />
+
+    <div class="section">
+      <div class="section-title">描边进度</div>
+      <div class="control">
+        <label>已描长度 <span class="val" id="val-trace">0%</span></label>
+        <input type="range" id="trace" min="0" max="1" step="0.005" value="0" />
+      </div>
+      <div class="row-btns">
+        <button type="button" id="btn-auto-trace" class="btn-primary">自动描边</button>
+        <button type="button" id="btn-reset-trace">重置</button>
+      </div>
     </div>
+
+    <div class="section">
+      <div class="section-title">显示模式</div>
+      <div class="mode-btns">
+        <button type="button" data-mode="both" class="active">环+边界</button>
+        <button type="button" data-mode="boundary">仅边界</button>
+        <button type="button" data-mode="ring">仅环</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">边界拉伸</div>
+      <div class="control">
+        <label>拉伸系数 <span class="val" id="val-stretch">0.00×</span></label>
+        <input type="range" id="stretch" min="0" max="1" step="0.01" value="0" />
+      </div>
+      <div class="row-btns">
+        <button type="button" id="btn-reset-stretch">重置拉伸</button>
+      </div>
+      <button type="button" id="btn-dynamic-demo" class="btn-demo">动态演示</button>
+      <p class="hint-text">系数=1.0 时，边界变为完美平面圆环；系数&lt;1.0 时，保持原始边界形态</p>
+    </div>
+
+    <div id="status" class="pending">状态：拖动滑块开始描边</div>
   </aside>
-
-  <aside id="panel" class="panel-card">
-    <h1>Möbius Band</h1>
-    <p class="subtitle">莫比乌斯环 · 单面单侧曲面</p>
-
-    <div class="control">
-      <label>主半径 R <span class="val" id="val-R">2.0</span></label>
-      <input type="range" id="R" min="0.8" max="4" step="0.1" value="2" />
-    </div>
-    <div class="control">
-      <label>带宽 w <span class="val" id="val-w">0.6</span></label>
-      <input type="range" id="w" min="0.15" max="1.5" step="0.05" value="0.6" />
-    </div>
-    <div class="control">
-      <label>带面透明 <span class="val" id="val-bandOpacity">0.42</span></label>
-      <input type="range" id="bandOpacity" min="0.12" max="0.85" step="0.03" value="0.42" />
-    </div>
-    <div class="control">
-      <label>蚂蚁数量 <span class="val" id="val-antCount">1</span></label>
-      <input type="range" id="antCount" min="1" max="12" step="1" value="1" />
-    </div>
-    <div class="control">
-      <label>蚂蚁大小 <span class="val" id="val-antSize">1.0</span></label>
-      <input type="range" id="antSize" min="0.35" max="2.5" step="0.05" value="1" />
-    </div>
-    <div class="control">
-      <label>蚂蚁速度 <span class="val" id="val-antSpeed">0.55</span></label>
-      <input type="range" id="antSpeed" min="0.1" max="2" step="0.05" value="0.55" />
-    </div>
-    <div class="control">
-      <label>自转速度 <span class="val" id="val-spin">0.3</span></label>
-      <input type="range" id="spin" min="0" max="2" step="0.05" value="0.3" />
-    </div>
-    <div class="control">
-      <label>金属度 <span class="val" id="val-metal">0.08</span></label>
-      <input type="range" id="metal" min="0" max="1" step="0.05" value="0.08" />
-    </div>
-    <div class="control">
-      <label>粗糙度 <span class="val" id="val-rough">0.38</span></label>
-      <input type="range" id="rough" min="0" max="1" step="0.05" value="0.38" />
-    </div>
-    <div class="control">
-      <label>色相 <span class="val" id="val-hue">195°</span></label>
-      <input type="range" id="hue" min="0" max="360" step="5" value="195" />
-    </div>
-
-    <div class="row-btns">
-      <button type="button" id="btn-wire" title="线框">线框</button>
-      <button type="button" id="btn-pause" class="active" title="暂停/播放">旋转</button>
-      <button type="button" id="btn-reset" title="重置视角">重置</button>
-    </div>
-  </aside>
-    </div>
-  </div>
-
-  <p id="hint" class="hint-desktop">拖拽旋转 · 滚轮缩放 · 右键平移 · 绿点正面 / 橙点反面</p>
-  <p id="hint-mobile" class="hint-mobile">单指旋转 · 双指缩放 · 绿点正面 / 橙点反面</p>
 
   <script type="importmap">
   {
@@ -449,111 +282,101 @@
     import * as THREE from "three";
     import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-    const U_SEG = 128;
-    const V_SEG = 16;
+    const U_SEG = 256;
+    const V_SEG = 24;
+    const BOUNDARY_SEG = 512;
 
     const params = {
       R: 2,
       w: 0.6,
       segments: 1,
-      spread: 0.75,
-      bandOpacity: 0.42,
-      antCount: 1,
-      antSize: 1,
-      antSpeed: 0.55,
-      spin: 0.3,
-      metal: 0.08,
-      rough: 0.38,
-      hue: 195,
-      wireframe: false,
-      rotating: true,
+      cutProgress: 0,
+      spread: 0,
+      traceProgress: 0,
+      stretch: 0,
+      displayMode: "both",
+      autoTracing: false,
+      autoCutting: false,
+      dynamicDemo: false,
     };
+
+    let mobiusStrips = [];
+    let stripMaterials = [];
+    let spreadCurrent = 0;
+    let spreadTarget = 0;
+    let lastRebuildSpread = -1;
+    let cutMarker = null;
 
     const container = document.getElementById("canvas-container");
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xe8f2fc);
-    scene.fog = new THREE.Fog(0xf0f6ff, 18, 42);
+    scene.background = new THREE.Color(0x060a12);
+    scene.fog = new THREE.FogExp2(0x060a12, 0.028);
 
     const camera = new THREE.PerspectiveCamera(
-      50,
+      48,
       window.innerWidth / window.innerHeight,
       0.1,
       100
     );
-    camera.position.set(5.5, 3.2, 5.5);
+    camera.position.set(4.8, 2.8, 5.2);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = false;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.35;
-    renderer.sortObjects = true;
     container.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
-    controls.touches = {
-      ONE: THREE.TOUCH.ROTATE,
-      TWO: THREE.TOUCH.DOLLY_PAN,
-    };
-    controls.minDistance = 2;
-    controls.maxDistance = 20;
-    controls.target.set(0, 0, 0);
+    controls.minDistance = 2.5;
+    controls.maxDistance = 18;
 
-    const hemi = new THREE.HemisphereLight(0xffffff, 0xc8daf0, 1.15);
-    scene.add(hemi);
-
-    const ambient = new THREE.AmbientLight(0xffffff, 0.72);
+    const ambient = new THREE.AmbientLight(0x304060, 0.5);
     scene.add(ambient);
 
-    const keyLight = new THREE.DirectionalLight(0xfffef8, 1.6);
-    keyLight.position.set(5, 10, 6);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    keyLight.position.set(6, 8, 5);
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xe8f4ff, 0.95);
-    fillLight.position.set(-6, 4, -3);
+    const fillLight = new THREE.DirectionalLight(0x6080c0, 0.6);
+    fillLight.position.set(-5, 2, -4);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xffd8f0, 0.75);
-    rimLight.position.set(2, 0, 8);
+    const rimLight = new THREE.DirectionalLight(0xffe8c0, 0.85);
+    rimLight.position.set(0, 3, -6);
     scene.add(rimLight);
 
-    const warmLight = new THREE.DirectionalLight(0xfff0d8, 0.55);
-    warmLight.position.set(-2, -3, 5);
-    scene.add(warmLight);
-
-    const grid = new THREE.GridHelper(12, 24, 0xa8c0e0, 0xd0dff0);
-    grid.position.y = -2.5;
+    const grid = new THREE.GridHelper(14, 28, 0x1a2840, 0x121c2e);
+    grid.position.y = -2.8;
     scene.add(grid);
 
-    let mobiusSegments = [];
-    let cutEdgeLines = [];
-    let mobiusMaterial = null;
-    let cutEdgeMaterial = null;
+    const starGeo = new THREE.BufferGeometry();
+    const starCount = 400;
+    const starPos = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+      const r = 8 + Math.random() * 22;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      starPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.4;
+      starPos[i * 3 + 2] = r * Math.cos(phi);
+    }
+    starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
+    const stars = new THREE.Points(
+      starGeo,
+      new THREE.PointsMaterial({ color: 0x8899bb, size: 0.04, transparent: true, opacity: 0.7 })
+    );
+    scene.add(stars);
+
     const mobiusGroup = new THREE.Group();
     scene.add(mobiusGroup);
 
-    const antsGroup = new THREE.Group();
-    mobiusGroup.add(antsGroup);
-    let antInstances = [];
-    let spreadCurrent = 0;
-    let spreadTarget = 0;
-    let lastRebuildSpread = -1;
-
-    function hslColor(h, s, l) {
-      const c = new THREE.Color();
-      c.setHSL(h / 360, s, l);
-      return c;
-    }
-
-    const INNER_HUE_OFFSET = 320;
-    const OUTER_HUE_OFFSET = 145;
-    const INNER_SAT = 0.96;
-    const OUTER_SAT = 0.9;
-    const INNER_LIGHT = 0.36;
-    const OUTER_LIGHT = 0.88;
+    let boundaryGroup = new THREE.Group();
+    mobiusGroup.add(boundaryGroup);
+    let traceMarker = null;
+    let lastStretchRebuild = -1;
 
     function mobiusPoint(R, w, u, v) {
       const cu = Math.cos(u);
@@ -564,245 +387,125 @@
       return new THREE.Vector3(scale * cu, scale * su, v * sh);
     }
 
-    function mobiusFrame(R, w, u, v) {
-      const eps = 1e-4;
-      const pos = mobiusPoint(R, w, u, v);
-      const posU = mobiusPoint(R, w, u + eps, v);
-      const posV = mobiusPoint(R, w, u, v + eps);
-      const tangent = posU.sub(pos).normalize();
-      const bitangent = posV.sub(pos);
-      const normal = new THREE.Vector3().crossVectors(tangent, bitangent).normalize();
-      const right = new THREE.Vector3().crossVectors(normal, tangent).normalize();
-      return { pos, tangent, normal, right };
+    function circleBoundaryPoint(R, u) {
+      return new THREE.Vector3(R * Math.cos(u), R * Math.sin(u), 0);
     }
 
-    function createAnt(legsOut) {
-      const ant = new THREE.Group();
-      const bodyMat = new THREE.MeshStandardMaterial({
-        color: 0x1c1510,
-        roughness: 0.55,
-        metalness: 0.05,
-      });
-      const accentMat = new THREE.MeshStandardMaterial({
-        color: 0x3d2818,
-        roughness: 0.5,
-      });
-
-      const s = 0.11;
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.22 * s, 10, 10), bodyMat);
-      head.position.set(0, 0, 0.55 * s);
-      ant.add(head);
-
-      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.3 });
-      const eyeGeo = new THREE.SphereGeometry(0.06 * s, 6, 6);
-      const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-      eyeL.position.set(-0.1 * s, 0.08 * s, 0.62 * s);
-      ant.add(eyeL);
-      const eyeR = eyeL.clone();
-      eyeR.position.x *= -1;
-      ant.add(eyeR);
-
-      const antennaMat = new THREE.MeshStandardMaterial({ color: 0x2a2018 });
-      const antGeo = new THREE.CylinderGeometry(0.015 * s, 0.02 * s, 0.35 * s, 6);
-      const antL = new THREE.Mesh(antGeo, antennaMat);
-      antL.position.set(-0.08 * s, 0.12 * s, 0.7 * s);
-      antL.rotation.x = -0.5;
-      antL.rotation.z = 0.35;
-      ant.add(antL);
-      const antR = antL.clone();
-      antR.position.x *= -1;
-      antR.rotation.z *= -1;
-      ant.add(antR);
-
-      const thorax = new THREE.Mesh(
-        new THREE.SphereGeometry(0.28 * s, 10, 10),
-        accentMat
-      );
-      thorax.scale.set(1.1, 0.85, 1.35);
-      thorax.position.set(0, 0, 0.15 * s);
-      ant.add(thorax);
-
-      const abdomen = new THREE.Mesh(
-        new THREE.SphereGeometry(0.32 * s, 10, 10),
-        bodyMat
-      );
-      abdomen.scale.set(1.15, 0.9, 1.5);
-      abdomen.position.set(0, 0, -0.35 * s);
-      ant.add(abdomen);
-
-      const legMat = new THREE.MeshStandardMaterial({ color: 0x15100c, roughness: 0.6 });
-      const legPairs = [
-        [-1, 0.22], [-1, -0.02], [-1, -0.26],
-        [1, 0.22], [1, -0.02], [1, -0.26],
-      ];
-      legPairs.forEach(([side, z], i) => {
-        const leg = new THREE.Group();
-        leg.position.set(side * 0.2 * s, -0.05 * s, z * s);
-
-        const upper = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.025 * s, 0.03 * s, 0.22 * s, 5),
-          legMat
-        );
-        upper.position.set(side * 0.08 * s, -0.08 * s, 0);
-        upper.rotation.z = side * 0.9;
-        leg.add(upper);
-
-        const lower = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.02 * s, 0.015 * s, 0.2 * s, 5),
-          legMat
-        );
-        lower.position.set(side * 0.18 * s, -0.2 * s, 0.04 * s);
-        lower.rotation.z = side * 1.1;
-        leg.add(lower);
-
-        ant.add(leg);
-        legsOut.push({ leg, side, phase: i * 1.05 });
-      });
-
-      ant.renderOrder = 10;
-      ant.traverse((obj) => {
-        if (obj.isMesh && obj.material) {
-          obj.material.depthWrite = true;
-          obj.material.transparent = false;
-          if (obj.material.emissive) {
-            obj.material.emissive.setHex(0x221100);
-            obj.material.emissiveIntensity = 0.35;
-          }
-        }
-      });
-      return ant;
-    }
-
-    const ANT_BASE_SCALE = 1.45;
-
-    function antVTrackFor(antIndex, total) {
-      const n = Math.round(params.segments);
-      const w = params.w;
+    /** 未拉伸时沿商空间边界：v=+w/2 的 u:0→2π，再 v=-w/2 的 u:0→2π */
+    function mobiusBoundaryPoint(R, w, t) {
       const halfW = w / 2;
-      if (n <= 1) {
-        if (total <= 1) return 0.12 * w;
-        const t = total > 1 ? antIndex / (total - 1) : 0.5;
-        return -halfW * 0.72 + t * w * 0.72;
-      }
-      const stripIdx = antIndex % n;
-      const { vMin, vMax } = segmentVRange(n, stripIdx, w);
-      return (vMin + vMax) * 0.5;
-    }
-
-    function antStripFor(antIndex) {
-      const n = Math.round(params.segments);
-      if (n <= 1) return 0;
-      return antIndex % n;
-    }
-
-    function disposeAntInstance(inst) {
-      antsGroup.remove(inst.ant);
-      antsGroup.remove(inst.marker);
-      inst.ant.traverse((obj) => {
-        if (obj.geometry) obj.geometry.dispose();
-        if (obj.material) {
-          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-          mats.forEach((m) => m.dispose());
-        }
-      });
-      inst.marker.geometry.dispose();
-      inst.marker.material.dispose();
-    }
-
-    function createAntInstance(index, total) {
-      const legs = [];
-      const ant = createAnt(legs);
-      const marker = new THREE.Mesh(
-        new THREE.SphereGeometry(1, 10, 10),
-        new THREE.MeshBasicMaterial({
-          color: 0xff5533,
-          depthTest: true,
-          depthWrite: true,
-        })
-      );
-      marker.renderOrder = 11;
-      antsGroup.add(ant);
-      antsGroup.add(marker);
-      return {
-        ant,
-        marker,
-        legs,
-        u: (index / total) * Math.PI * 2,
-        walkPhase: index * 0.85,
-        stripIndex: antStripFor(index),
-      };
-    }
-
-    function syncAntCount() {
-      const target = Math.round(params.antCount);
-      while (antInstances.length < target) {
-        antInstances.push(createAntInstance(antInstances.length, target));
-      }
-      while (antInstances.length > target) {
-        disposeAntInstance(antInstances.pop());
-      }
-      antInstances.forEach((inst, i) => {
-        inst.stripIndex = antStripFor(i);
-      });
-      applyAntSize();
-    }
-
-    function applyAntSize() {
-      const s = ANT_BASE_SCALE * params.antSize;
-      antInstances.forEach((inst) => {
-        inst.ant.scale.setScalar(s);
-      });
-    }
-
-    function updateAntPoses(dt) {
-      const { R, w, antSpeed } = params;
-      const n = Math.round(params.segments);
-      const total = antInstances.length;
-      const eps = 1e-4;
       const uFull = Math.PI * 2;
-
-      antInstances.forEach((inst, index) => {
-        inst.u = (inst.u + antSpeed * dt) % uFull;
-        inst.walkPhase += dt * 14;
-        inst.stripIndex = antStripFor(index);
-
-        const k = inst.stripIndex;
-        const vTrack = antVTrackFor(index, total);
-        const pos = applySpread(R, w, inst.u, vTrack, spreadCurrent, k, n);
-        const posU = applySpread(R, w, inst.u + eps, vTrack, spreadCurrent, k, n);
-        const posV = applySpread(R, w, inst.u, vTrack + eps, spreadCurrent, k, n);
-        const tangent = new THREE.Vector3().subVectors(posU, pos).normalize();
-        const bitangent = new THREE.Vector3().subVectors(posV, pos);
-        const normal = new THREE.Vector3().crossVectors(tangent, bitangent).normalize();
-        const lift = 0.055 + Math.sin(inst.walkPhase * 2) * 0.014;
-        inst.ant.position.copy(pos).addScaledVector(normal, lift);
-
-        const worldPos = pos.clone().applyMatrix4(mobiusGroup.matrixWorld);
-        const worldNormal = normal.clone().transformDirection(mobiusGroup.matrixWorld);
-        const toCam = new THREE.Vector3().subVectors(camera.position, worldPos).normalize();
-        const onFrontSide = worldNormal.dot(toCam) > 0;
-        inst.marker.position.copy(pos).addScaledVector(normal, lift * 0.35);
-        inst.marker.material.color.setHex(onFrontSide ? 0x3dbf6e : 0xff4422);
-        const markerPulse = onFrontSide ? 0.85 : 1.15;
-        inst.marker.scale.setScalar(0.038 * params.antSize * markerPulse);
-
-        const z = tangent.clone();
-        const y = normal.clone();
-        const x = new THREE.Vector3().crossVectors(y, z).normalize();
-        y.crossVectors(z, x).normalize();
-        inst.ant.matrix.makeBasis(x, y, z);
-        inst.ant.matrix.setPosition(inst.ant.position);
-        inst.ant.matrixAutoUpdate = false;
-
-        inst.legs.forEach(({ leg, side, phase }) => {
-          const swing = Math.sin(inst.walkPhase + phase) * 0.35;
-          leg.rotation.x = swing;
-          leg.rotation.y = side * 0.08 * Math.cos(inst.walkPhase + phase);
-        });
-      });
+      const s = Math.min(Math.max(t, 0), 1);
+      if (s >= 1) return mobiusPoint(R, w, uFull, -halfW);
+      const local = s * 2;
+      if (local <= 1) return mobiusPoint(R, w, local * uFull, halfW);
+      return mobiusPoint(R, w, (local - 1) * uFull, -halfW);
     }
 
-    syncAntCount();
+    /**
+     * 拉伸时 t∈[0,1] 对应圆上同一圈角度（不绕两圈）；
+     * 避免拉伸完成后出现两环被直线相连。
+     */
+    function boundaryPointAt(R, w, t, stretch) {
+      const s = Math.min(Math.max(t, 0), 1);
+      const orig = mobiusBoundaryPoint(R, w, s);
+      const st = Math.min(Math.max(stretch, 0), 1);
+      if (st <= 0) return orig;
+      const flat = circleBoundaryPoint(R, s * Math.PI * 2);
+      if (st >= 1) return flat;
+      return orig.lerp(flat, st);
+    }
+
+    function buildArcLengthTable(points) {
+      const lengths = [0];
+      for (let i = 1; i < points.length; i++) {
+        lengths.push(lengths[i - 1] + points[i].distanceTo(points[i - 1]));
+      }
+      return lengths;
+    }
+
+    function resampleByArcLength(points, targetCount) {
+      if (points.length < 2) return points.slice();
+      const lengths = buildArcLengthTable(points);
+      const total = lengths[lengths.length - 1];
+      if (total < 1e-8) return [points[0].clone()];
+
+      const out = [];
+      for (let j = 0; j <= targetCount; j++) {
+        const target = (j / targetCount) * total;
+        let i = 1;
+        while (i < lengths.length && lengths[i] < target) i++;
+        if (i >= points.length) {
+          out.push(points[points.length - 1].clone());
+          continue;
+        }
+        const segStart = lengths[i - 1];
+        const segLen = lengths[i] - segStart;
+        const alpha = segLen > 1e-8 ? (target - segStart) / segLen : 0;
+        out.push(new THREE.Vector3().lerpVectors(points[i - 1], points[i], alpha));
+      }
+      return out;
+    }
+
+    function pointAtArcLength(points, lengths, dist) {
+      const total = lengths[lengths.length - 1];
+      const target = Math.min(Math.max(dist, 0), total);
+      let i = 1;
+      while (i < lengths.length && lengths[i] < target) i++;
+      if (i >= points.length) return points[points.length - 1].clone();
+      const segStart = lengths[i - 1];
+      const segLen = lengths[i] - segStart;
+      const alpha = segLen > 1e-8 ? (target - segStart) / segLen : 0;
+      return new THREE.Vector3().lerpVectors(points[i - 1], points[i], alpha);
+    }
+
+    function slicePathByArcLength(points, lengths, progress) {
+      const total = lengths[lengths.length - 1];
+      const target = total * Math.min(Math.max(progress, 0), 1);
+      const out = [points[0].clone()];
+      for (let i = 1; i < points.length; i++) {
+        if (lengths[i] <= target + 1e-9) {
+          out.push(points[i].clone());
+        } else {
+          out.push(pointAtArcLength(points, lengths, target));
+          break;
+        }
+      }
+      return out;
+    }
+
+    const boundaryPathCache = { stretch: NaN, points: null, lengths: null };
+
+    function getBoundaryPath(R, w, stretch) {
+      if (boundaryPathCache.stretch === stretch && boundaryPathCache.points) {
+        return boundaryPathCache;
+      }
+      const dense = BOUNDARY_SEG * 3;
+      const raw = [];
+      for (let i = 0; i <= dense; i++) {
+        raw.push(boundaryPointAt(R, w, i / dense, stretch));
+      }
+      const points = resampleByArcLength(raw, BOUNDARY_SEG);
+      const lengths = buildArcLengthTable(points);
+      boundaryPathCache.stretch = stretch;
+      boundaryPathCache.points = points;
+      boundaryPathCache.lengths = lengths;
+      return boundaryPathCache;
+    }
+
+    function invalidateBoundaryCache() {
+      boundaryPathCache.stretch = NaN;
+      boundaryPathCache.points = null;
+      boundaryPathCache.lengths = null;
+    }
+
+    function surfacePoint(R, w, u, v, stretch) {
+      const st = Math.min(Math.max(stretch, 0), 1);
+      if (st <= 0) return mobiusPoint(R, w, u, v);
+      const wEff = w * (1 - st);
+      if (wEff < 1e-5) return circleBoundaryPoint(R, u);
+      return mobiusPoint(R, wEff, u, v * (wEff / w));
+    }
 
     function gapRatioForSegments(segCount) {
       if (segCount <= 1) return 0;
@@ -822,79 +525,45 @@
       return segIndex - (segCount - 1) * 0.5;
     }
 
-    function mobiusBitangent(R, w, u, v) {
-      const p = mobiusPoint(R, w, u, v);
-      const pV = mobiusPoint(R, w, u, v + 1e-4);
+    function mobiusBitangent(R, w, u, v, stretch) {
+      const p = surfacePoint(R, w, u, v, stretch);
+      const pV = surfacePoint(R, w, u, v + 1e-4, stretch);
       return pV.sub(p).normalize();
     }
 
-    function applySpread(R, w, u, v, spread, segIndex, segCount) {
-      const p = mobiusPoint(R, w, u, v);
+    function stripPoint(R, w, u, v, segIndex, segCount, spread, stretch) {
+      const p = surfacePoint(R, w, u, v, stretch);
       if (spread <= 0 || segCount <= 1) return p;
       const idx = stripSpreadIndex(segIndex, segCount);
-      if (idx === 0) return p;
-      return p.addScaledVector(mobiusBitangent(R, w, u, v), spread * idx);
+      return p.addScaledVector(mobiusBitangent(R, w, u, v, stretch), spread * idx);
     }
 
-    function recalcSpreadTarget() {
-      const n = Math.round(params.segments);
-      spreadTarget =
-        n <= 1 ? 0 : params.spread * params.w * (0.55 + n * 0.18);
-    }
-
-    function vertexColorAt(u, v, halfW, baseHue, segIndex, segCount) {
-      const sideSign = v * Math.cos(u * 0.5);
-      const edge = THREE.MathUtils.smoothstep(-halfW * 0.02, halfW * 0.02, sideSign);
-      const segNudge = segCount > 1 ? segIndex * (28 / segCount) : 0;
-
-      const inner = hslColor(
-        (baseHue + INNER_HUE_OFFSET + segNudge) % 360,
-        INNER_SAT,
-        INNER_LIGHT
-      );
-      const outer = hslColor(
-        (baseHue + OUTER_HUE_OFFSET + segNudge) % 360,
-        OUTER_SAT,
-        OUTER_LIGHT
-      );
-      return inner.lerp(outer, edge);
-    }
-
-    function buildMobiusGeometry(R, w, uSeg, vSeg, baseHue, vMin, vMax, segIndex, segCount, spread) {
+    function buildStripGeometry(
+      R, w, vMin, vMax, segIndex, segCount, spread, stretch, cutProgress
+    ) {
+      const uFull = Math.PI * 2;
+      const uMax = Math.max(0.002, cutProgress) * uFull;
+      const uSeg = Math.max(4, Math.floor(U_SEG * cutProgress));
+      const vSpan = vMax - vMin;
+      const vSeg = Math.max(3, Math.floor(V_SEG * (vSpan / w)));
       const positions = [];
       const normals = [];
-      const colors = [];
-      const uvs = [];
       const indices = [];
-
-      const halfW = w / 2;
-      const uFull = Math.PI * 2;
-      const vSpan = vMax - vMin;
+      const eps = 1e-4;
 
       for (let i = 0; i <= uSeg; i++) {
-        const u = (i / uSeg) * uFull;
-
+        const u = (i / uSeg) * uMax;
         for (let j = 0; j <= vSeg; j++) {
-          const t = j / vSeg;
-          const v = vMin + t * vSpan;
-
-          const p = applySpread(R, w, u, v, spread, segIndex, segCount);
+          const v = vMin + (j / vSeg) * vSpan;
+          const p = stripPoint(R, w, u, v, segIndex, segCount, spread, stretch);
           positions.push(p.x, p.y, p.z);
 
-          const du = 1e-4;
-          const dv = 1e-4;
-          const p1 = applySpread(R, w, u + du, v, spread, segIndex, segCount);
-          const pV = applySpread(R, w, u, v + dv, spread, segIndex, segCount);
-
-          const tu = new THREE.Vector3().subVectors(p1, p);
+          const pU = stripPoint(R, w, u + eps, v, segIndex, segCount, spread, stretch);
+          const pV = stripPoint(R, w, u, v + eps, segIndex, segCount, spread, stretch);
+          const tu = new THREE.Vector3().subVectors(pU, p);
           const tv = new THREE.Vector3().subVectors(pV, p);
           const n = new THREE.Vector3().crossVectors(tu, tv).normalize();
           normals.push(n.x, n.y, n.z);
-
-          const vc = vertexColorAt(u, v, halfW, baseHue, segIndex, segCount);
-          colors.push(vc.r, vc.g, vc.b);
-
-          uvs.push(i / uSeg, t);
         }
       }
 
@@ -910,119 +579,255 @@
       const geo = new THREE.BufferGeometry();
       geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
       geo.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
-      geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-      geo.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
       geo.setIndex(indices);
       geo.computeBoundingSphere();
       return geo;
     }
 
-    function buildCutEdgeAlongU(R, w, v, segIndex, segCount, spread) {
-      const pts = [];
-      const steps = U_SEG;
-      for (let i = 0; i <= steps; i++) {
-        const u = (i / steps) * Math.PI * 2;
-        pts.push(applySpread(R, w, u, v, spread, segIndex, segCount));
-      }
-      const geo = new THREE.BufferGeometry().setFromPoints(pts);
-      return new THREE.Line(geo, cutEdgeMaterial);
+    function stripHue(segIndex, segCount) {
+      const hues = [42, 38, 46, 34, 50];
+      return hues[segIndex % hues.length];
     }
 
-    function disposeCutEdges() {
-      cutEdgeLines.forEach((line) => {
-        line.geometry.dispose();
-        mobiusGroup.remove(line);
+    function makeStripMaterial(segIndex, segCount) {
+      const c = new THREE.Color();
+      c.setHSL(stripHue(segIndex, segCount) / 360, 0.72, 0.52);
+      return new THREE.MeshStandardMaterial({
+        color: c,
+        emissive: c.clone().multiplyScalar(0.12),
+        metalness: 0.62,
+        roughness: 0.34,
+        side: THREE.DoubleSide,
       });
-      cutEdgeLines = [];
-      if (cutEdgeMaterial) {
-        cutEdgeMaterial.dispose();
-        cutEdgeMaterial = null;
-      }
     }
 
-    function updateMobius() {
-      mobiusSegments.forEach((mesh) => {
+    function recalcSpreadTarget() {
+      const n = Math.round(params.segments);
+      spreadTarget = n <= 1 ? 0 : params.spread * params.w * (0.55 + n * 0.18);
+    }
+
+    function disposeMobiusStrips() {
+      mobiusStrips.forEach((mesh) => {
         mesh.geometry.dispose();
         mobiusGroup.remove(mesh);
       });
-      mobiusSegments = [];
-      disposeCutEdges();
-      if (mobiusMaterial) {
-        mobiusMaterial.dispose();
-        mobiusMaterial = null;
-      }
-
-      const n = Math.round(params.segments);
-      const vSegEach = Math.max(6, Math.floor(V_SEG / Math.max(n, 1)));
-
-      mobiusMaterial = new THREE.MeshStandardMaterial({
-        vertexColors: true,
-        color: 0xffffff,
-        emissive: 0xffffff,
-        emissiveIntensity: 0.18,
-        metalness: params.metal,
-        roughness: params.rough,
-        transparent: true,
-        opacity: params.bandOpacity,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        wireframe: params.wireframe,
-        flatShading: false,
-      });
-
-      for (let k = 0; k < n; k++) {
-        const { vMin, vMax } = segmentVRange(n, k, params.w);
-        const geo = buildMobiusGeometry(
-          params.R,
-          params.w,
-          U_SEG,
-          vSegEach,
-          params.hue,
-          vMin,
-          vMax,
-          k,
-          n,
-          spreadCurrent
-        );
-        const mesh = new THREE.Mesh(geo, mobiusMaterial);
-        mesh.renderOrder = 0;
-        mobiusGroup.add(mesh);
-        mobiusSegments.push(mesh);
-      }
-
-      if (n > 1) {
-        cutEdgeMaterial = new THREE.LineBasicMaterial({
-          color: 0x2a4568,
-          linewidth: 1,
-        });
-        for (let k = 0; k < n; k++) {
-          const { vMax } = segmentVRange(n, k, params.w);
-          const line = buildCutEdgeAlongU(
-            params.R,
-            params.w,
-            vMax,
-            k,
-            n,
-            spreadCurrent
-          );
-          mobiusGroup.add(line);
-          cutEdgeLines.push(line);
-        }
-      }
-      lastRebuildSpread = spreadCurrent;
+      mobiusStrips = [];
+      stripMaterials.forEach((m) => m.dispose());
+      stripMaterials = [];
     }
 
-    function setSegments(n) {
-      params.segments = n;
-      document.querySelectorAll("#panel-cut .cut-btns button").forEach((btn) => {
-        btn.classList.toggle("active", parseInt(btn.dataset.segments, 10) === n);
+    function updateCutMarker() {
+      const { R, w, cutProgress, segments, stretch } = params;
+      if (cutProgress <= 0 || segments <= 1) {
+        if (cutMarker) cutMarker.visible = false;
+        return;
+      }
+      if (!cutMarker) {
+        cutMarker = new THREE.Mesh(
+          new THREE.SphereGeometry(0.07, 12, 12),
+          new THREE.MeshBasicMaterial({ color: 0x66bbff, toneMapped: false })
+        );
+        cutMarker.renderOrder = 6;
+        mobiusGroup.add(cutMarker);
+      }
+      const u = cutProgress * Math.PI * 2;
+      const vCenter = 0;
+      const p = stripPoint(R, w, u, vCenter, 0, segments, spreadCurrent, stretch);
+      cutMarker.visible = true;
+      cutMarker.position.copy(p);
+    }
+
+    function disposeBoundary() {
+      while (boundaryGroup.children.length) {
+        const child = boundaryGroup.children[0];
+        boundaryGroup.remove(child);
+        child.traverse((obj) => {
+          if (obj.geometry) obj.geometry.dispose();
+          if (obj.material) {
+            const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+            mats.forEach((m) => m.dispose());
+          }
+        });
+      }
+    }
+
+    function polylineCurve(points) {
+      const path = new THREE.CurvePath();
+      for (let i = 0; i < points.length - 1; i++) {
+        path.add(new THREE.LineCurve3(points[i], points[i + 1]));
+      }
+      return path;
+    }
+
+    function buildBoundaryTube(points, lengths, progress) {
+      const slice = slicePathByArcLength(points, lengths, progress);
+      if (slice.length < 2) return null;
+
+      const curve = polylineCurve(slice);
+      const tubularSegments = Math.max(slice.length - 1, 4);
+      const geo = new THREE.TubeGeometry(curve, tubularSegments, 0.028, 8, false);
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xff7722,
+        transparent: true,
+        opacity: 0.95,
+        toneMapped: false,
       });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.renderOrder = 2;
+
+      const glowGeo = new THREE.TubeGeometry(curve, tubularSegments, 0.055, 8, false);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: 0xff5500,
+        transparent: true,
+        opacity: 0.22,
+        depthWrite: false,
+        toneMapped: false,
+      });
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      glow.renderOrder = 1;
+
+      const group = new THREE.Group();
+      group.add(glow);
+      group.add(mesh);
+      return group;
+    }
+
+    function updateTraceMarker(point) {
+      if (!traceMarker) {
+        const markerGroup = new THREE.Group();
+        const core = new THREE.Mesh(
+          new THREE.SphereGeometry(0.05, 16, 16),
+          new THREE.MeshBasicMaterial({ color: 0xffaa44, toneMapped: false })
+        );
+        const glow = new THREE.Mesh(
+          new THREE.SphereGeometry(0.09, 16, 16),
+          new THREE.MeshBasicMaterial({
+            color: 0xff6600,
+            transparent: true,
+            opacity: 0.35,
+            depthWrite: false,
+            toneMapped: false,
+          })
+        );
+        markerGroup.add(glow);
+        markerGroup.add(core);
+        markerGroup.renderOrder = 5;
+        traceMarker = markerGroup;
+        mobiusGroup.add(traceMarker);
+      }
+      traceMarker.visible = true;
+      traceMarker.position.copy(point);
+    }
+
+    function updateBoundaries() {
+      disposeBoundary();
+      const { R, w, stretch, traceProgress } = params;
+      const { points, lengths } = getBoundaryPath(R, w, stretch);
+
+      if (traceProgress > 0) {
+        const tube = buildBoundaryTube(points, lengths, traceProgress);
+        if (tube) boundaryGroup.add(tube);
+      }
+
+      const total = lengths[lengths.length - 1];
+      const tip = pointAtArcLength(points, lengths, total * traceProgress);
+      updateTraceMarker(tip);
+    }
+
+    function effectiveCutProgress() {
+      const n = Math.round(params.segments);
+      if (n <= 1) return 1;
+      return params.cutProgress;
+    }
+
+    function updateMobiusStrips() {
+      disposeMobiusStrips();
+      const { R, w, stretch, segments } = params;
+      const n = Math.round(segments);
+      const cut = effectiveCutProgress();
+      if (cut <= 0) {
+        applyDisplayMode();
+        updateCutMarker();
+        return;
+      }
+
+      for (let k = 0; k < n; k++) {
+        const { vMin, vMax } = segmentVRange(n, k, w);
+        const geo = buildStripGeometry(
+          R, w, vMin, vMax, k, n, spreadCurrent, stretch, cut
+        );
+        const mat = makeStripMaterial(k, n);
+        stripMaterials.push(mat);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.castShadow = false;
+        mobiusGroup.add(mesh);
+        mobiusStrips.push(mesh);
+      }
+      lastRebuildSpread = spreadCurrent;
+      applyDisplayMode();
+      updateCutMarker();
+    }
+
+    function applyDisplayMode() {
+      const mode = params.displayMode;
+      const showRing = mode !== "boundary";
+      mobiusStrips.forEach((m) => {
+        m.visible = showRing;
+      });
+      boundaryGroup.visible = mode !== "ring";
+    }
+
+    function updateStatus() {
+      const el = document.getElementById("status");
+      const cut = params.cutProgress;
+      const n = Math.round(params.segments);
+      if (n > 1 && cut < 1) {
+        el.className = "pending";
+        el.textContent = `状态：裁剪中… ${Math.round(cut * 100)}%（${n} 条带）`;
+      } else if (n > 1 && cut >= 1 && params.spread > 0) {
+        el.className = "";
+        el.textContent = "✓ 裁剪完成！拖动「拉开它们」观察各环分离";
+      } else if (n > 1 && cut >= 1) {
+        el.className = "";
+        el.textContent = "✓ 裁剪完成！可拉开各条带或继续描边";
+      } else if (params.traceProgress >= 1) {
+        el.className = "";
+        el.textContent = "✓ 描边完成！可切换模式查看";
+      } else if (params.traceProgress > 0) {
+        el.className = "pending";
+        el.textContent = `状态：描边中… ${Math.round(params.traceProgress * 100)}%`;
+      } else {
+        el.className = "pending";
+        el.textContent = "状态：选择等分模式，开始裁剪";
+      }
+    }
+
+    function refresh(force = true) {
+      const stretchChanged =
+        force || Math.abs(params.stretch - lastStretchRebuild) > 0.008;
+      const spreadChanged =
+        force || Math.abs(spreadCurrent - lastRebuildSpread) > 0.004;
+      if (stretchChanged) {
+        lastStretchRebuild = params.stretch;
+        invalidateBoundaryCache();
+        updateBoundaries();
+      }
+      if (stretchChanged || spreadChanged) {
+        updateMobiusStrips();
+      }
+    }
+
+    function refreshAll() {
       recalcSpreadTarget();
-      updateMobius();
+      lastStretchRebuild = params.stretch;
+      invalidateBoundaryCache();
+      updateMobiusStrips();
+      updateBoundaries();
+      updateStatus();
     }
 
     recalcSpreadTarget();
-    updateMobius();
+    refreshAll();
 
     const clock = new THREE.Clock();
 
@@ -1030,175 +835,201 @@
       requestAnimationFrame(animate);
       const dt = clock.getDelta();
 
-      if (params.rotating && params.spin > 0) {
-        mobiusGroup.rotation.z += params.spin * dt;
-      }
-
-      if (Math.abs(spreadTarget - spreadCurrent) > 0.001) {
-        spreadCurrent += (spreadTarget - spreadCurrent) * Math.min(1, dt * 5);
-        if (Math.abs(spreadCurrent - lastRebuildSpread) > 0.004) {
-          updateMobius();
+      if (params.autoTracing && params.traceProgress < 1) {
+        params.traceProgress = Math.min(1, params.traceProgress + dt * 0.28);
+        document.getElementById("trace").value = params.traceProgress;
+        document.getElementById("val-trace").textContent =
+          Math.round(params.traceProgress * 100) + "%";
+        updateBoundaries();
+        updateStatus();
+        if (params.traceProgress >= 1) {
+          params.autoTracing = false;
+          document.getElementById("btn-auto-trace").classList.remove("active");
         }
       }
 
-      updateAntPoses(dt);
+      if (params.autoCutting && params.cutProgress < 1) {
+        params.cutProgress = Math.min(1, params.cutProgress + dt * 0.32);
+        document.getElementById("cut").value = params.cutProgress;
+        document.getElementById("val-cut").textContent =
+          Math.round(params.cutProgress * 100) + "%";
+        updateMobiusStrips();
+        updateStatus();
+        if (params.cutProgress >= 1) {
+          params.autoCutting = false;
+          document.getElementById("btn-auto-cut").classList.remove("active");
+        }
+      }
+
+      if (Math.abs(spreadTarget - spreadCurrent) > 0.001) {
+        spreadCurrent += (spreadTarget - spreadCurrent) * Math.min(1, dt * 6);
+        updateMobiusStrips();
+      }
+
+      if (params.dynamicDemo) {
+        const t = clock.getElapsedTime() * 0.4;
+        params.stretch = (Math.sin(t) + 1) * 0.5;
+        document.getElementById("stretch").value = params.stretch;
+        document.getElementById("val-stretch").textContent =
+          params.stretch.toFixed(2) + "×";
+        refresh(false);
+      }
 
       controls.update();
       renderer.render(scene, camera);
     }
     animate();
 
-    function bindSlider(id, key, fmt) {
-      const el = document.getElementById(id);
-      const valEl = document.getElementById("val-" + id);
-      const update = () => {
-        let v = parseFloat(el.value);
-        if (key === "antCount") v = Math.round(v);
-        params[key] = v;
-        if (valEl) valEl.textContent = fmt ? fmt(v) : v;
-      };
-      el.addEventListener("input", () => {
-        update();
-        if (key === "antSize") applyAntSize();
-        if (key === "antCount") syncAntCount();
-        if (["R", "w", "hue"].includes(key)) {
-          updateMobius();
-        } else if (mobiusMaterial && (key === "metal" || key === "rough" || key === "bandOpacity")) {
-          const v = params[key];
-          if (key === "metal") mobiusMaterial.metalness = v;
-          if (key === "rough") mobiusMaterial.roughness = v;
-          if (key === "bandOpacity") mobiusMaterial.opacity = v;
-        }
+    const traceEl = document.getElementById("trace");
+    const stretchEl = document.getElementById("stretch");
+    const cutEl = document.getElementById("cut");
+    const spreadEl = document.getElementById("spread");
+
+    function setSegments(n) {
+      params.segments = n;
+      document.querySelectorAll("#cut-btns .btn-cut").forEach((btn) => {
+        btn.classList.toggle("active", parseInt(btn.dataset.segments, 10) === n);
       });
-      update();
+      if (n <= 1) {
+        params.cutProgress = 0;
+        cutEl.value = 0;
+        document.getElementById("val-cut").textContent = "0%";
+        params.spread = 0;
+        spreadEl.value = 0;
+        document.getElementById("val-spread").textContent = "0.00";
+        spreadCurrent = 0;
+        spreadTarget = 0;
+        params.autoCutting = false;
+        document.getElementById("btn-auto-cut").classList.remove("active");
+      } else if (params.cutProgress < 1) {
+        params.autoCutting = true;
+        document.getElementById("btn-auto-cut").classList.add("active");
+      }
+      recalcSpreadTarget();
+      refreshAll();
     }
 
-    bindSlider("R", "R", (v) => v.toFixed(1));
-    bindSlider("w", "w", (v) => v.toFixed(2));
-    bindSlider("bandOpacity", "bandOpacity", (v) => v.toFixed(2));
-    bindSlider("antCount", "antCount", (v) => String(Math.round(v)));
-    bindSlider("antSize", "antSize", (v) => v.toFixed(2));
-    bindSlider("antSpeed", "antSpeed", (v) => v.toFixed(2));
-    bindSlider("spin", "spin", (v) => v.toFixed(2));
-    bindSlider("metal", "metal", (v) => v.toFixed(2));
-    bindSlider("rough", "rough", (v) => v.toFixed(2));
-    bindSlider("hue", "hue", (v) => Math.round(v) + "°");
-
-    document.getElementById("btn-wire").addEventListener("click", function () {
-      params.wireframe = !params.wireframe;
-      this.classList.toggle("active", params.wireframe);
-      if (mobiusMaterial) mobiusMaterial.wireframe = params.wireframe;
-    });
-
-    document.getElementById("btn-pause").addEventListener("click", function () {
-      params.rotating = !params.rotating;
-      this.classList.toggle("active", params.rotating);
-      this.textContent = params.rotating ? "旋转" : "暂停";
-    });
-
-    document.getElementById("btn-reset").addEventListener("click", () => {
-      camera.position.set(5.5, 3.2, 5.5);
-      controls.target.set(0, 0, 0);
-      mobiusGroup.rotation.set(0, 0, 0);
-      antInstances.forEach((inst, i) => {
-        inst.u = (i / antInstances.length) * Math.PI * 2;
-        inst.walkPhase = i * 0.85;
-      });
-      controls.update();
-    });
-
-    ["R", "w"].forEach((id) => {
-      document.getElementById(id).addEventListener("change", updateMobius);
-    });
-
-    document.querySelectorAll("#panel-cut .cut-btns button").forEach((btn) => {
+    document.querySelectorAll("#cut-btns .btn-cut").forEach((btn) => {
       btn.addEventListener("click", () => {
         setSegments(parseInt(btn.dataset.segments, 10));
-        if (isMobileLayout()) closeSettingsDrawer();
       });
     });
 
-    const spreadEl = document.getElementById("spread");
-    const spreadValEl = document.getElementById("val-spread");
+    cutEl.addEventListener("input", () => {
+      params.cutProgress = parseFloat(cutEl.value);
+      params.autoCutting = false;
+      document.getElementById("btn-auto-cut").classList.remove("active");
+      document.getElementById("val-cut").textContent =
+        Math.round(params.cutProgress * 100) + "%";
+      updateMobiusStrips();
+      updateStatus();
+    });
+
     spreadEl.addEventListener("input", () => {
       params.spread = parseFloat(spreadEl.value);
-      spreadValEl.textContent = params.spread.toFixed(2);
+      document.getElementById("val-spread").textContent = params.spread.toFixed(2);
       recalcSpreadTarget();
     });
-    ["metal", "rough", "bandOpacity"].forEach((id) => {
-      document.getElementById(id).addEventListener("input", () => {
-        if (!mobiusMaterial) return;
-        mobiusMaterial.metalness = params.metal;
-        mobiusMaterial.roughness = params.rough;
-        mobiusMaterial.opacity = params.bandOpacity;
+
+    document.getElementById("btn-auto-cut").addEventListener("click", function () {
+      if (params.segments <= 1) {
+        setSegments(2);
+      }
+      params.autoCutting = !params.autoCutting;
+      this.classList.toggle("active", params.autoCutting);
+      if (params.autoCutting && params.cutProgress >= 1) {
+        params.cutProgress = 0;
+        cutEl.value = 0;
+        document.getElementById("val-cut").textContent = "0%";
+        updateMobiusStrips();
+        updateStatus();
+      }
+    });
+
+    document.getElementById("btn-reset-cut").addEventListener("click", () => {
+      params.autoCutting = false;
+      params.cutProgress = 0;
+      params.spread = 0;
+      spreadCurrent = 0;
+      spreadTarget = 0;
+      cutEl.value = 0;
+      spreadEl.value = 0;
+      document.getElementById("btn-auto-cut").classList.remove("active");
+      document.getElementById("val-cut").textContent = "0%";
+      document.getElementById("val-spread").textContent = "0.00";
+      refreshAll();
+    });
+
+    traceEl.addEventListener("input", () => {
+      params.traceProgress = parseFloat(traceEl.value);
+      params.autoTracing = false;
+      document.getElementById("btn-auto-trace").classList.remove("active");
+      document.getElementById("val-trace").textContent =
+        Math.round(params.traceProgress * 100) + "%";
+      updateBoundaries();
+      updateStatus();
+    });
+
+    stretchEl.addEventListener("input", () => {
+      params.stretch = parseFloat(stretchEl.value);
+      params.dynamicDemo = false;
+      document.getElementById("btn-dynamic-demo").classList.remove("active");
+      document.getElementById("val-stretch").textContent =
+        params.stretch.toFixed(2) + "×";
+      refreshAll();
+    });
+
+    document.getElementById("btn-auto-trace").addEventListener("click", function () {
+      params.autoTracing = !params.autoTracing;
+      this.classList.toggle("active", params.autoTracing);
+      if (params.autoTracing && params.traceProgress >= 1) {
+        params.traceProgress = 0;
+        traceEl.value = 0;
+        document.getElementById("val-trace").textContent = "0%";
+        updateBoundaries();
+        updateStatus();
+      }
+    });
+
+    document.getElementById("btn-reset-trace").addEventListener("click", () => {
+      params.autoTracing = false;
+      params.traceProgress = 0;
+      traceEl.value = 0;
+      document.getElementById("btn-auto-trace").classList.remove("active");
+      document.getElementById("val-trace").textContent = "0%";
+      updateBoundaries();
+      updateStatus();
+    });
+
+    document.querySelectorAll(".mode-btns button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        params.displayMode = btn.dataset.mode;
+        document.querySelectorAll(".mode-btns button").forEach((b) => {
+          b.classList.toggle("active", b === btn);
+        });
+        applyDisplayMode();
       });
     });
-    document.getElementById("hue").addEventListener("change", updateMobius);
+
+    document.getElementById("btn-reset-stretch").addEventListener("click", () => {
+      params.dynamicDemo = false;
+      params.stretch = 0;
+      stretchEl.value = 0;
+      document.getElementById("btn-dynamic-demo").classList.remove("active");
+      document.getElementById("val-stretch").textContent = "0.00×";
+      refreshAll();
+    });
+
+    document.getElementById("btn-dynamic-demo").addEventListener("click", function () {
+      params.dynamicDemo = !params.dynamicDemo;
+      this.classList.toggle("active", params.dynamicDemo);
+    });
 
     window.addEventListener("resize", () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
-      if (window.innerWidth >= 769) closeSettingsDrawer();
     });
-
-    const settingsDrawer = document.getElementById("settings-drawer");
-    const drawerOverlay = document.getElementById("drawer-overlay");
-    const btnOpenSettings = document.getElementById("btn-open-settings");
-    const drawerClose = document.getElementById("drawer-close");
-
-    function isMobileLayout() {
-      return window.innerWidth < 769;
-    }
-
-    function openSettingsDrawer() {
-      if (!isMobileLayout()) return;
-      settingsDrawer.classList.add("open");
-      settingsDrawer.setAttribute("aria-hidden", "false");
-      drawerOverlay.classList.add("open");
-      drawerOverlay.setAttribute("aria-hidden", "false");
-      btnOpenSettings.setAttribute("aria-expanded", "true");
-      document.body.classList.add("drawer-open");
-    }
-
-    function closeSettingsDrawer() {
-      settingsDrawer.classList.remove("open");
-      settingsDrawer.setAttribute("aria-hidden", "true");
-      drawerOverlay.classList.remove("open");
-      drawerOverlay.setAttribute("aria-hidden", "true");
-      btnOpenSettings.setAttribute("aria-expanded", "false");
-      document.body.classList.remove("drawer-open");
-    }
-
-    btnOpenSettings.addEventListener("click", () => {
-      if (settingsDrawer.classList.contains("open")) closeSettingsDrawer();
-      else openSettingsDrawer();
-    });
-    drawerClose.addEventListener("click", closeSettingsDrawer);
-    drawerOverlay.addEventListener("click", closeSettingsDrawer);
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeSettingsDrawer();
-    });
-
-    let drawerTouchY = 0;
-    settingsDrawer.addEventListener(
-      "touchstart",
-      (e) => {
-        if (!isMobileLayout()) return;
-        drawerTouchY = e.touches[0].clientY;
-      },
-      { passive: true }
-    );
-    settingsDrawer.addEventListener(
-      "touchend",
-      (e) => {
-        if (!isMobileLayout() || !settingsDrawer.classList.contains("open")) return;
-        const dy = e.changedTouches[0].clientY - drawerTouchY;
-        if (dy > 72) closeSettingsDrawer();
-      },
-      { passive: true }
-    );
   </script>
 </body>
 </html>
