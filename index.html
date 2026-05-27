@@ -131,13 +131,6 @@
       border-color: rgba(255, 140, 60, 0.55);
       color: #ffd0a8;
     }
-    button.btn-demo {
-      background: linear-gradient(135deg, rgba(130, 90, 220, 0.4), rgba(90, 60, 180, 0.35));
-      border-color: rgba(160, 120, 255, 0.5);
-      color: #ddd0ff;
-      flex: 1 1 100%;
-      margin-top: 4px;
-    }
     .mode-btns {
       display: flex;
       gap: 6px;
@@ -203,7 +196,7 @@
 
   <aside id="panel">
     <h1>莫比乌斯环实验室</h1>
-    <p class="subtitle">带宽裁剪 · 边界拉伸</p>
+    <p class="subtitle">带宽裁剪 · 边界描边</p>
 
     <div class="section">
       <div class="section-title">选择模式</div>
@@ -227,8 +220,8 @@
         <button type="button" id="btn-reset-cut">重置</button>
       </div>
       <div class="control" style="margin-top:12px">
-        <label>拉开它们 <span class="val" id="val-spread">0.00</span></label>
-        <input type="range" id="spread" min="0" max="1" step="0.02" value="0" />
+        <label>拉开它们 <span class="val" id="val-spread">0.0</span></label>
+        <input type="range" id="spread" min="0" max="8" step="0.1" value="0" />
       </div>
       <p class="hint-text">沿带宽均分剪开后，拖动拉开滑块，看各条带如何在空间中分离。</p>
     </div>
@@ -252,19 +245,6 @@
         <button type="button" data-mode="boundary">仅边界</button>
         <button type="button" data-mode="ring">仅环</button>
       </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">边界拉伸</div>
-      <div class="control">
-        <label>拉伸系数 <span class="val" id="val-stretch">0.00×</span></label>
-        <input type="range" id="stretch" min="0" max="1" step="0.01" value="0" />
-      </div>
-      <div class="row-btns">
-        <button type="button" id="btn-reset-stretch">重置拉伸</button>
-      </div>
-      <button type="button" id="btn-dynamic-demo" class="btn-demo">动态演示</button>
-      <p class="hint-text">系数=1.0 时，边界变为完美平面圆环；系数&lt;1.0 时，保持原始边界形态</p>
     </div>
 
     <div id="status" class="pending">状态：拖动滑块开始描边</div>
@@ -293,19 +273,17 @@
       cutProgress: 0,
       spread: 0,
       traceProgress: 0,
-      stretch: 0,
       displayMode: "both",
       autoTracing: false,
       autoCutting: false,
-      dynamicDemo: false,
     };
 
     let mobiusStrips = [];
     let stripMaterials = [];
+    let divisionLines = [];
     let spreadCurrent = 0;
     let spreadTarget = 0;
     let lastRebuildSpread = -1;
-    let cutMarker = null;
 
     const container = document.getElementById("canvas-container");
     const scene = new THREE.Scene();
@@ -331,7 +309,7 @@
     controls.enableDamping = true;
     controls.dampingFactor = 0.06;
     controls.minDistance = 2.5;
-    controls.maxDistance = 18;
+    controls.maxDistance = 36;
 
     const ambient = new THREE.AmbientLight(0x304060, 0.5);
     scene.add(ambient);
@@ -375,8 +353,6 @@
 
     let boundaryGroup = new THREE.Group();
     mobiusGroup.add(boundaryGroup);
-    let traceMarker = null;
-    let lastStretchRebuild = -1;
 
     function mobiusPoint(R, w, u, v) {
       const cu = Math.cos(u);
@@ -387,11 +363,7 @@
       return new THREE.Vector3(scale * cu, scale * su, v * sh);
     }
 
-    function circleBoundaryPoint(R, u) {
-      return new THREE.Vector3(R * Math.cos(u), R * Math.sin(u), 0);
-    }
-
-    /** 未拉伸时沿商空间边界：v=+w/2 的 u:0→2π，再 v=-w/2 的 u:0→2π */
+    /** 沿商空间边界：v=+w/2 的 u:0→2π，再 v=-w/2 的 u:0→2π */
     function mobiusBoundaryPoint(R, w, t) {
       const halfW = w / 2;
       const uFull = Math.PI * 2;
@@ -400,20 +372,6 @@
       const local = s * 2;
       if (local <= 1) return mobiusPoint(R, w, local * uFull, halfW);
       return mobiusPoint(R, w, (local - 1) * uFull, -halfW);
-    }
-
-    /**
-     * 拉伸时 t∈[0,1] 对应圆上同一圈角度（不绕两圈）；
-     * 避免拉伸完成后出现两环被直线相连。
-     */
-    function boundaryPointAt(R, w, t, stretch) {
-      const s = Math.min(Math.max(t, 0), 1);
-      const orig = mobiusBoundaryPoint(R, w, s);
-      const st = Math.min(Math.max(stretch, 0), 1);
-      if (st <= 0) return orig;
-      const flat = circleBoundaryPoint(R, s * Math.PI * 2);
-      if (st >= 1) return flat;
-      return orig.lerp(flat, st);
     }
 
     function buildArcLengthTable(points) {
@@ -474,37 +432,29 @@
       return out;
     }
 
-    const boundaryPathCache = { stretch: NaN, points: null, lengths: null };
+    const boundaryPathCache = { valid: false, points: null, lengths: null };
 
-    function getBoundaryPath(R, w, stretch) {
-      if (boundaryPathCache.stretch === stretch && boundaryPathCache.points) {
+    function getBoundaryPath(R, w) {
+      if (boundaryPathCache.valid && boundaryPathCache.points) {
         return boundaryPathCache;
       }
       const dense = BOUNDARY_SEG * 3;
       const raw = [];
       for (let i = 0; i <= dense; i++) {
-        raw.push(boundaryPointAt(R, w, i / dense, stretch));
+        raw.push(mobiusBoundaryPoint(R, w, i / dense));
       }
       const points = resampleByArcLength(raw, BOUNDARY_SEG);
       const lengths = buildArcLengthTable(points);
-      boundaryPathCache.stretch = stretch;
+      boundaryPathCache.valid = true;
       boundaryPathCache.points = points;
       boundaryPathCache.lengths = lengths;
       return boundaryPathCache;
     }
 
     function invalidateBoundaryCache() {
-      boundaryPathCache.stretch = NaN;
+      boundaryPathCache.valid = false;
       boundaryPathCache.points = null;
       boundaryPathCache.lengths = null;
-    }
-
-    function surfacePoint(R, w, u, v, stretch) {
-      const st = Math.min(Math.max(stretch, 0), 1);
-      if (st <= 0) return mobiusPoint(R, w, u, v);
-      const wEff = w * (1 - st);
-      if (wEff < 1e-5) return circleBoundaryPoint(R, u);
-      return mobiusPoint(R, wEff, u, v * (wEff / w));
     }
 
     function gapRatioForSegments(segCount) {
@@ -525,21 +475,21 @@
       return segIndex - (segCount - 1) * 0.5;
     }
 
-    function mobiusBitangent(R, w, u, v, stretch) {
-      const p = surfacePoint(R, w, u, v, stretch);
-      const pV = surfacePoint(R, w, u, v + 1e-4, stretch);
-      return pV.sub(p).normalize();
+    function mobiusBitangent(R, w, u, v) {
+      const p = mobiusPoint(R, w, u, v);
+      const pV = mobiusPoint(R, w, u, v + 1e-4);
+      return new THREE.Vector3().subVectors(pV, p).normalize();
     }
 
-    function stripPoint(R, w, u, v, segIndex, segCount, spread, stretch) {
-      const p = surfacePoint(R, w, u, v, stretch);
+    function stripPoint(R, w, u, v, segIndex, segCount, spread) {
+      const p = mobiusPoint(R, w, u, v);
       if (spread <= 0 || segCount <= 1) return p;
       const idx = stripSpreadIndex(segIndex, segCount);
-      return p.addScaledVector(mobiusBitangent(R, w, u, v, stretch), spread * idx);
+      return p.addScaledVector(mobiusBitangent(R, w, u, v), spread * idx);
     }
 
     function buildStripGeometry(
-      R, w, vMin, vMax, segIndex, segCount, spread, stretch, cutProgress
+      R, w, vMin, vMax, segIndex, segCount, spread, cutProgress
     ) {
       const uFull = Math.PI * 2;
       const uMax = Math.max(0.002, cutProgress) * uFull;
@@ -555,11 +505,11 @@
         const u = (i / uSeg) * uMax;
         for (let j = 0; j <= vSeg; j++) {
           const v = vMin + (j / vSeg) * vSpan;
-          const p = stripPoint(R, w, u, v, segIndex, segCount, spread, stretch);
+          const p = stripPoint(R, w, u, v, segIndex, segCount, spread);
           positions.push(p.x, p.y, p.z);
 
-          const pU = stripPoint(R, w, u + eps, v, segIndex, segCount, spread, stretch);
-          const pV = stripPoint(R, w, u, v + eps, segIndex, segCount, spread, stretch);
+          const pU = stripPoint(R, w, u + eps, v, segIndex, segCount, spread);
+          const pV = stripPoint(R, w, u, v + eps, segIndex, segCount, spread);
           const tu = new THREE.Vector3().subVectors(pU, p);
           const tv = new THREE.Vector3().subVectors(pV, p);
           const n = new THREE.Vector3().crossVectors(tu, tv).normalize();
@@ -585,25 +535,105 @@
     }
 
     function stripHue(segIndex, segCount) {
-      const hues = [42, 38, 46, 34, 50];
-      return hues[segIndex % hues.length];
+      if (segCount <= 1) return 42;
+      return (segIndex / segCount) * 360;
     }
 
     function makeStripMaterial(segIndex, segCount) {
       const c = new THREE.Color();
-      c.setHSL(stripHue(segIndex, segCount) / 360, 0.72, 0.52);
+      c.setHSL(stripHue(segIndex, segCount) / 360, 0.78, 0.52);
       return new THREE.MeshStandardMaterial({
         color: c,
-        emissive: c.clone().multiplyScalar(0.12),
-        metalness: 0.62,
-        roughness: 0.34,
+        emissive: c.clone().multiplyScalar(0.14),
+        metalness: 0.58,
+        roughness: 0.32,
         side: THREE.DoubleSide,
       });
     }
 
     function recalcSpreadTarget() {
       const n = Math.round(params.segments);
-      spreadTarget = n <= 1 ? 0 : params.spread * params.w * (0.55 + n * 0.18);
+      spreadTarget = n <= 1 ? 0 : params.spread;
+    }
+
+    function divisionVPositions(segCount, w) {
+      if (segCount <= 1) return [];
+      const halfW = w / 2;
+      const gap = w * gapRatioForSegments(segCount);
+      const stripW = (w - segCount * gap) / segCount;
+      const positions = [];
+      for (let k = 0; k < segCount - 1; k++) {
+        const vMin = -halfW + k * (stripW + gap);
+        positions.push(vMin + stripW + gap * 0.5);
+      }
+      return positions;
+    }
+
+    function disposeDivisionLines() {
+      divisionLines.forEach((obj) => {
+        obj.traverse((child) => {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) child.material.dispose();
+        });
+        mobiusGroup.remove(obj);
+      });
+      divisionLines = [];
+    }
+
+    function buildDivisionLine(R, w, vLine, cutProgress) {
+      const uFull = Math.PI * 2;
+      const uMax = Math.max(0.002, cutProgress) * uFull;
+      const uSeg = Math.max(32, Math.floor(U_SEG * cutProgress));
+      const points = [];
+      for (let i = 0; i <= uSeg; i++) {
+        const u = (i / uSeg) * uMax;
+        points.push(mobiusPoint(R, w, u, vLine));
+      }
+      if (points.length < 2) return null;
+
+      const curve = polylineCurve(points);
+      const tubularSegments = Math.max(points.length - 1, 8);
+      const coreGeo = new THREE.TubeGeometry(curve, tubularSegments, 0.014, 6, false);
+      const coreMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        toneMapped: false,
+      });
+      const core = new THREE.Mesh(coreGeo, coreMat);
+      core.renderOrder = 4;
+
+      const glowGeo = new THREE.TubeGeometry(curve, tubularSegments, 0.028, 6, false);
+      const glowMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.28,
+        depthWrite: false,
+        toneMapped: false,
+      });
+      const glow = new THREE.Mesh(glowGeo, glowMat);
+      glow.renderOrder = 3;
+
+      const group = new THREE.Group();
+      group.add(glow);
+      group.add(core);
+      return group;
+    }
+
+    function updateDivisionLines() {
+      disposeDivisionLines();
+      const { R, w, segments } = params;
+      const n = Math.round(segments);
+      if (n <= 1) return;
+
+      const cut = effectiveCutProgress();
+      const lineProgress = cut > 0 ? cut : 1;
+      const vLines = divisionVPositions(n, w);
+      for (const vLine of vLines) {
+        const line = buildDivisionLine(R, w, vLine, lineProgress);
+        if (line) {
+          mobiusGroup.add(line);
+          divisionLines.push(line);
+        }
+      }
     }
 
     function disposeMobiusStrips() {
@@ -614,27 +644,6 @@
       mobiusStrips = [];
       stripMaterials.forEach((m) => m.dispose());
       stripMaterials = [];
-    }
-
-    function updateCutMarker() {
-      const { R, w, cutProgress, segments, stretch } = params;
-      if (cutProgress <= 0 || segments <= 1) {
-        if (cutMarker) cutMarker.visible = false;
-        return;
-      }
-      if (!cutMarker) {
-        cutMarker = new THREE.Mesh(
-          new THREE.SphereGeometry(0.07, 12, 12),
-          new THREE.MeshBasicMaterial({ color: 0x66bbff, toneMapped: false })
-        );
-        cutMarker.renderOrder = 6;
-        mobiusGroup.add(cutMarker);
-      }
-      const u = cutProgress * Math.PI * 2;
-      const vCenter = 0;
-      const p = stripPoint(R, w, u, vCenter, 0, segments, spreadCurrent, stretch);
-      cutMarker.visible = true;
-      cutMarker.position.copy(p);
     }
 
     function disposeBoundary() {
@@ -692,46 +701,15 @@
       return group;
     }
 
-    function updateTraceMarker(point) {
-      if (!traceMarker) {
-        const markerGroup = new THREE.Group();
-        const core = new THREE.Mesh(
-          new THREE.SphereGeometry(0.05, 16, 16),
-          new THREE.MeshBasicMaterial({ color: 0xffaa44, toneMapped: false })
-        );
-        const glow = new THREE.Mesh(
-          new THREE.SphereGeometry(0.09, 16, 16),
-          new THREE.MeshBasicMaterial({
-            color: 0xff6600,
-            transparent: true,
-            opacity: 0.35,
-            depthWrite: false,
-            toneMapped: false,
-          })
-        );
-        markerGroup.add(glow);
-        markerGroup.add(core);
-        markerGroup.renderOrder = 5;
-        traceMarker = markerGroup;
-        mobiusGroup.add(traceMarker);
-      }
-      traceMarker.visible = true;
-      traceMarker.position.copy(point);
-    }
-
     function updateBoundaries() {
       disposeBoundary();
-      const { R, w, stretch, traceProgress } = params;
-      const { points, lengths } = getBoundaryPath(R, w, stretch);
+      const { R, w, traceProgress } = params;
+      const { points, lengths } = getBoundaryPath(R, w);
 
       if (traceProgress > 0) {
         const tube = buildBoundaryTube(points, lengths, traceProgress);
         if (tube) boundaryGroup.add(tube);
       }
-
-      const total = lengths[lengths.length - 1];
-      const tip = pointAtArcLength(points, lengths, total * traceProgress);
-      updateTraceMarker(tip);
     }
 
     function effectiveCutProgress() {
@@ -742,19 +720,30 @@
 
     function updateMobiusStrips() {
       disposeMobiusStrips();
-      const { R, w, stretch, segments } = params;
+      const { R, w, segments } = params;
       const n = Math.round(segments);
       const cut = effectiveCutProgress();
+      updateDivisionLines();
       if (cut <= 0) {
+        if (n > 1) {
+          const halfW = w / 2;
+          const geo = buildStripGeometry(
+            R, w, -halfW, halfW, 0, 1, spreadCurrent, 1
+          );
+          const mat = makeStripMaterial(0, n);
+          stripMaterials.push(mat);
+          const mesh = new THREE.Mesh(geo, mat);
+          mobiusGroup.add(mesh);
+          mobiusStrips.push(mesh);
+        }
         applyDisplayMode();
-        updateCutMarker();
         return;
       }
 
       for (let k = 0; k < n; k++) {
         const { vMin, vMax } = segmentVRange(n, k, w);
         const geo = buildStripGeometry(
-          R, w, vMin, vMax, k, n, spreadCurrent, stretch, cut
+          R, w, vMin, vMax, k, n, spreadCurrent, cut
         );
         const mat = makeStripMaterial(k, n);
         stripMaterials.push(mat);
@@ -765,7 +754,6 @@
       }
       lastRebuildSpread = spreadCurrent;
       applyDisplayMode();
-      updateCutMarker();
     }
 
     function applyDisplayMode() {
@@ -773,6 +761,9 @@
       const showRing = mode !== "boundary";
       mobiusStrips.forEach((m) => {
         m.visible = showRing;
+      });
+      divisionLines.forEach((line) => {
+        line.visible = showRing;
       });
       boundaryGroup.visible = mode !== "ring";
     }
@@ -803,23 +794,15 @@
     }
 
     function refresh(force = true) {
-      const stretchChanged =
-        force || Math.abs(params.stretch - lastStretchRebuild) > 0.008;
       const spreadChanged =
         force || Math.abs(spreadCurrent - lastRebuildSpread) > 0.004;
-      if (stretchChanged) {
-        lastStretchRebuild = params.stretch;
-        invalidateBoundaryCache();
-        updateBoundaries();
-      }
-      if (stretchChanged || spreadChanged) {
+      if (spreadChanged) {
         updateMobiusStrips();
       }
     }
 
     function refreshAll() {
       recalcSpreadTarget();
-      lastStretchRebuild = params.stretch;
       invalidateBoundaryCache();
       updateMobiusStrips();
       updateBoundaries();
@@ -866,22 +849,12 @@
         updateMobiusStrips();
       }
 
-      if (params.dynamicDemo) {
-        const t = clock.getElapsedTime() * 0.4;
-        params.stretch = (Math.sin(t) + 1) * 0.5;
-        document.getElementById("stretch").value = params.stretch;
-        document.getElementById("val-stretch").textContent =
-          params.stretch.toFixed(2) + "×";
-        refresh(false);
-      }
-
       controls.update();
       renderer.render(scene, camera);
     }
     animate();
 
     const traceEl = document.getElementById("trace");
-    const stretchEl = document.getElementById("stretch");
     const cutEl = document.getElementById("cut");
     const spreadEl = document.getElementById("spread");
 
@@ -896,7 +869,7 @@
         document.getElementById("val-cut").textContent = "0%";
         params.spread = 0;
         spreadEl.value = 0;
-        document.getElementById("val-spread").textContent = "0.00";
+        document.getElementById("val-spread").textContent = "0.0";
         spreadCurrent = 0;
         spreadTarget = 0;
         params.autoCutting = false;
@@ -927,7 +900,7 @@
 
     spreadEl.addEventListener("input", () => {
       params.spread = parseFloat(spreadEl.value);
-      document.getElementById("val-spread").textContent = params.spread.toFixed(2);
+      document.getElementById("val-spread").textContent = params.spread.toFixed(1);
       recalcSpreadTarget();
     });
 
@@ -956,7 +929,7 @@
       spreadEl.value = 0;
       document.getElementById("btn-auto-cut").classList.remove("active");
       document.getElementById("val-cut").textContent = "0%";
-      document.getElementById("val-spread").textContent = "0.00";
+      document.getElementById("val-spread").textContent = "0.0";
       refreshAll();
     });
 
@@ -968,15 +941,6 @@
         Math.round(params.traceProgress * 100) + "%";
       updateBoundaries();
       updateStatus();
-    });
-
-    stretchEl.addEventListener("input", () => {
-      params.stretch = parseFloat(stretchEl.value);
-      params.dynamicDemo = false;
-      document.getElementById("btn-dynamic-demo").classList.remove("active");
-      document.getElementById("val-stretch").textContent =
-        params.stretch.toFixed(2) + "×";
-      refreshAll();
     });
 
     document.getElementById("btn-auto-trace").addEventListener("click", function () {
@@ -1009,20 +973,6 @@
         });
         applyDisplayMode();
       });
-    });
-
-    document.getElementById("btn-reset-stretch").addEventListener("click", () => {
-      params.dynamicDemo = false;
-      params.stretch = 0;
-      stretchEl.value = 0;
-      document.getElementById("btn-dynamic-demo").classList.remove("active");
-      document.getElementById("val-stretch").textContent = "0.00×";
-      refreshAll();
-    });
-
-    document.getElementById("btn-dynamic-demo").addEventListener("click", function () {
-      params.dynamicDemo = !params.dynamicDemo;
-      this.classList.toggle("active", params.dynamicDemo);
     });
 
     window.addEventListener("resize", () => {
