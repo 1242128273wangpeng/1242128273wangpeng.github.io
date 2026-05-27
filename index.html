@@ -466,7 +466,7 @@
       const halfW = w / 2;
       if (segCount <= 1) return { vMin: -halfW, vMax: halfW };
       const gap = w * gapRatioForSegments(segCount);
-      const stripW = (w - segCount * gap) / segCount;
+      const stripW = (w - (segCount - 1) * gap) / segCount;
       const vMin = -halfW + segIndex * (stripW + gap);
       return { vMin, vMax: vMin + stripW };
     }
@@ -534,14 +534,8 @@
       return geo;
     }
 
-    function stripHue(segIndex, segCount) {
-      if (segCount <= 1) return 42;
-      return (segIndex / segCount) * 360;
-    }
-
-    function makeStripMaterial(segIndex, segCount) {
-      const c = new THREE.Color();
-      c.setHSL(stripHue(segIndex, segCount) / 360, 0.78, 0.52);
+    function makeStripMaterial() {
+      const c = new THREE.Color().setHSL(0.12, 0.72, 0.52);
       return new THREE.MeshStandardMaterial({
         color: c,
         emissive: c.clone().multiplyScalar(0.14),
@@ -560,7 +554,7 @@
       if (segCount <= 1) return [];
       const halfW = w / 2;
       const gap = w * gapRatioForSegments(segCount);
-      const stripW = (w - segCount * gap) / segCount;
+      const stripW = (w - (segCount - 1) * gap) / segCount;
       const positions = [];
       for (let k = 0; k < segCount - 1; k++) {
         const vMin = -halfW + k * (stripW + gap);
@@ -618,8 +612,16 @@
       return group;
     }
 
+    function shouldShowDivisionLines() {
+      if (params.spread > 0.001 || spreadCurrent > 0.001) return false;
+      const n = Math.round(params.segments);
+      return n > 1;
+    }
+
     function updateDivisionLines() {
       disposeDivisionLines();
+      if (!shouldShowDivisionLines()) return;
+
       const { R, w, segments } = params;
       const n = Math.round(segments);
       if (n <= 1) return;
@@ -730,7 +732,7 @@
           const geo = buildStripGeometry(
             R, w, -halfW, halfW, 0, 1, spreadCurrent, 1
           );
-          const mat = makeStripMaterial(0, n);
+          const mat = makeStripMaterial();
           stripMaterials.push(mat);
           const mesh = new THREE.Mesh(geo, mat);
           mobiusGroup.add(mesh);
@@ -745,7 +747,7 @@
         const geo = buildStripGeometry(
           R, w, vMin, vMax, k, n, spreadCurrent, cut
         );
-        const mat = makeStripMaterial(k, n);
+        const mat = makeStripMaterial();
         stripMaterials.push(mat);
         const mesh = new THREE.Mesh(geo, mat);
         mesh.castShadow = false;
@@ -902,6 +904,7 @@
       params.spread = parseFloat(spreadEl.value);
       document.getElementById("val-spread").textContent = params.spread.toFixed(1);
       recalcSpreadTarget();
+      updateDivisionLines();
     });
 
     document.getElementById("btn-auto-cut").addEventListener("click", function () {
