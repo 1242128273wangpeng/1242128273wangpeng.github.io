@@ -1,1030 +1,627 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>莫比乌斯环实验室</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>立体图形展开图</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body {
-      width: 100%; height: 100%;
-      overflow: hidden;
-      font-family: "SF Pro Display", "PingFang SC", system-ui, sans-serif;
-      background: #0a0e18;
-      color: #c8d4e8;
-    }
-    #canvas-container {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-    }
-    canvas { display: block; }
 
-    #panel {
-      position: fixed;
-      top: 16px;
-      left: 16px;
-      z-index: 10;
-      width: min(280px, calc(100vw - 32px));
-      max-height: calc(100vh - 32px);
-      overflow-y: auto;
-      padding: 18px 16px;
-      border-radius: 14px;
-      background: rgba(18, 24, 38, 0.88);
-      backdrop-filter: blur(14px);
-      border: 1px solid rgba(80, 120, 180, 0.25);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
-    }
-    #panel h1 {
-      font-size: 1rem;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      margin-bottom: 4px;
-      background: linear-gradient(135deg, #6eb6ff, #a78bfa);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    #panel .subtitle {
-      font-size: 0.7rem;
-      color: rgba(140, 160, 190, 0.75);
-      margin-bottom: 16px;
-    }
-    .section {
-      margin-bottom: 16px;
-      padding-bottom: 14px;
-      border-bottom: 1px solid rgba(80, 110, 160, 0.2);
-    }
-    .section:last-of-type {
-      border-bottom: none;
-      margin-bottom: 0;
-      padding-bottom: 0;
-    }
-    .section-title {
-      font-size: 0.78rem;
-      font-weight: 600;
-      color: #8ab4f0;
-      margin-bottom: 10px;
-    }
-    .control {
-      margin-bottom: 10px;
-    }
-    .control label {
+    body {
       display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      font-size: 0.75rem;
-      color: rgba(180, 200, 230, 0.9);
-      margin-bottom: 6px;
+      min-height: 100vh;
+      background: #f8f9fa;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    .control label span.val {
-      font-variant-numeric: tabular-nums;
-      color: #ff9a4a;
-      font-size: 0.72rem;
-    }
-    input[type="range"] {
-      width: 100%;
-      height: 4px;
-      -webkit-appearance: none;
-      appearance: none;
-      background: rgba(80, 120, 180, 0.35);
-      border-radius: 2px;
-      outline: none;
-    }
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 14px; height: 14px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #ff9a4a, #ff6b35);
-      cursor: pointer;
-      box-shadow: 0 0 10px rgba(255, 120, 50, 0.6);
-    }
-    .row-btns {
+
+    .sidebar {
+      width: 168px;
+      flex-shrink: 0;
+      background: #fff;
+      border-right: 1px solid #e5e7eb;
+      padding: 24px 16px;
       display: flex;
+      flex-direction: column;
       gap: 8px;
-      flex-wrap: wrap;
-      margin-top: 8px;
-    }
-    button {
-      flex: 1;
-      min-width: 72px;
-      padding: 8px 10px;
-      font-size: 0.72rem;
-      border: 1px solid rgba(100, 140, 200, 0.3);
-      border-radius: 8px;
-      background: rgba(40, 55, 85, 0.9);
-      color: #b8cce8;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    button:hover {
-      background: rgba(55, 75, 110, 1);
-      border-color: rgba(120, 170, 230, 0.5);
-    }
-    button.active {
-      background: rgba(255, 140, 60, 0.22);
-      border-color: #ff8c3a;
-      color: #ffc090;
-    }
-    button.btn-primary {
-      background: linear-gradient(135deg, rgba(255, 140, 60, 0.35), rgba(255, 90, 40, 0.25));
-      border-color: rgba(255, 140, 60, 0.55);
-      color: #ffd0a8;
-    }
-    .mode-btns {
-      display: flex;
-      gap: 6px;
-    }
-    .mode-btns button {
-      flex: 1;
-      min-width: 0;
-      padding: 7px 4px;
-      font-size: 0.68rem;
-    }
-    .cut-btns {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 6px;
-    }
-    .cut-btns button {
-      min-width: 0;
-      padding: 7px 2px;
-      font-size: 0.62rem;
-    }
-    button.btn-cut.active {
-      background: rgba(80, 200, 120, 0.28);
-      border-color: #5cd68a;
-      color: #b8f0c8;
-    }
-    .hint-text {
-      font-size: 0.65rem;
-      color: rgba(140, 160, 190, 0.65);
-      line-height: 1.45;
-      margin-top: 8px;
-    }
-    #status {
-      margin-top: 12px;
-      padding: 8px 10px;
-      border-radius: 8px;
-      font-size: 0.68rem;
-      line-height: 1.4;
-      background: rgba(40, 80, 50, 0.35);
-      border: 1px solid rgba(80, 180, 100, 0.35);
-      color: #8fd4a0;
-    }
-    #status.pending {
-      background: rgba(60, 55, 30, 0.35);
-      border-color: rgba(200, 160, 60, 0.35);
-      color: #e8c878;
     }
 
-    @media (max-width: 480px) {
-      #panel {
-        top: auto;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        width: 100%;
-        max-height: 52vh;
-        border-radius: 16px 16px 0 0;
-      }
+    .sidebar h2 {
+      font-size: 14px;
+      color: #6b7280;
+      font-weight: 500;
+      margin-bottom: 8px;
+      padding-left: 4px;
     }
+
+    .sidebar button {
+      padding: 10px 14px;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 15px;
+      color: #374151;
+      cursor: pointer;
+      text-align: left;
+      transition: border-color 0.15s, background 0.15s, color 0.15s;
+    }
+
+    .sidebar button:hover {
+      border-color: #93c5fd;
+      background: #f0f7ff;
+    }
+
+    .sidebar button.active {
+      border-color: #3b82f6;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 500;
+    }
+
+    .viewport {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .scene {
+      width: 100%;
+      height: 100vh;
+      perspective: 1200px;
+      perspective-origin: 50% 45%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .assembly {
+      position: relative;
+      transform-style: preserve-3d;
+      transform: rotateX(-28deg) rotateY(-38deg);
+    }
+
+    .faces, .skeleton {
+      position: absolute;
+      left: 0; top: 0;
+      transform-style: preserve-3d;
+    }
+
+    .skeleton {
+      pointer-events: none;
+      z-index: 20;
+    }
+
+    .hinge {
+      position: absolute;
+      transform-style: preserve-3d;
+    }
+
+    .face, .wire {
+      position: absolute;
+      left: 0; top: 0;
+      border: 2.5px solid #111;
+      backface-visibility: visible;
+      box-sizing: border-box;
+    }
+
+    .wire {
+      background: transparent;
+    }
+
+    .wire.hidden { border-style: dashed; }
+
+    .face.tri {
+      background: transparent;
+      border: none;
+    }
+
+    .face.tri .tri-fill {
+      position: absolute;
+      inset: 0;
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      border: 2.5px solid #111;
+      box-sizing: border-box;
+    }
+
+    .wire.tri .tri-fill {
+      position: absolute;
+      inset: 0;
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      border: 2.5px solid #111;
+      box-sizing: border-box;
+    }
+
+    .wire.tri.hidden .tri-fill { border-style: dashed; }
+
+    .face.circle, .wire.circle {
+      border-radius: 50%;
+      border: 2.5px solid #111;
+    }
+
+    .dot {
+      position: absolute;
+      width: 7px; height: 7px;
+      background: #e03030;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+    }
+
+    .dot.tri-dot { /* placed at triangle vertices via JS */ }
   </style>
 </head>
 <body>
-  <div id="canvas-container"></div>
-
-  <aside id="panel">
-    <h1>莫比乌斯环实验室</h1>
-    <p class="subtitle">带宽裁剪 · 边界描边</p>
-
-    <div class="section">
-      <div class="section-title">选择模式</div>
-      <div class="cut-btns" id="cut-btns">
-        <button type="button" data-segments="1" class="btn-cut active">原状</button>
-        <button type="button" data-segments="2" class="btn-cut">二等分</button>
-        <button type="button" data-segments="3" class="btn-cut">三等分</button>
-        <button type="button" data-segments="4" class="btn-cut">四等分</button>
-        <button type="button" data-segments="5" class="btn-cut">五等分</button>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">神奇剪刀 · 裁剪进度</div>
-      <div class="control">
-        <label>沿环裁剪 <span class="val" id="val-cut">0%</span></label>
-        <input type="range" id="cut" min="0" max="1" step="0.005" value="0" />
-      </div>
-      <div class="row-btns">
-        <button type="button" id="btn-auto-cut" class="btn-primary">自动裁剪</button>
-        <button type="button" id="btn-reset-cut">重置</button>
-      </div>
-      <div class="control" style="margin-top:12px">
-        <label>拉开它们 <span class="val" id="val-spread">0.0</span></label>
-        <input type="range" id="spread" min="0" max="8" step="0.1" value="0" />
-      </div>
-      <p class="hint-text">沿带宽均分剪开后，拖动拉开滑块，看各条带如何在空间中分离。</p>
-    </div>
-
-    <div class="section">
-      <div class="section-title">描边进度</div>
-      <div class="control">
-        <label>已描长度 <span class="val" id="val-trace">0%</span></label>
-        <input type="range" id="trace" min="0" max="1" step="0.005" value="0" />
-      </div>
-      <div class="row-btns">
-        <button type="button" id="btn-auto-trace" class="btn-primary">自动描边</button>
-        <button type="button" id="btn-reset-trace">重置</button>
-      </div>
-    </div>
-
-    <div class="section">
-      <div class="section-title">宽度拉伸</div>
-      <div class="control">
-        <label>拉伸倍数 <span class="val" id="val-width-stretch">1.0×</span></label>
-        <input type="range" id="width-stretch" min="0.1" max="5.0" step="0.1" value="1.0" />
-      </div>
-      <p class="hint-text">拖动滑块调整莫比乌斯环的整体宽度。</p>
-    </div>
-
-    <div class="section">
-      <div class="section-title">显示模式</div>
-      <div class="mode-btns">
-        <button type="button" data-mode="both" class="active">环+边界</button>
-        <button type="button" data-mode="boundary">仅边界</button>
-        <button type="button" data-mode="ring">仅环</button>
-      </div>
-    </div>
-
-    <div id="status" class="pending">状态：拖动滑块开始描边</div>
+  <aside class="sidebar">
+    <h2>选择图形</h2>
+    <button type="button" data-shape="cube" class="active">正方体</button>
+    <button type="button" data-shape="cuboid">长方体</button>
+    <button type="button" data-shape="pyramid">三角锥</button>
+    <button type="button" data-shape="cylinder">圆柱</button>
   </aside>
 
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-    }
-  }
-  </script>
-  <script type="module">
-    import * as THREE from "three";
-    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+  <main class="viewport">
+    <div class="scene">
+      <div class="assembly" id="assembly"></div>
+    </div>
+  </main>
 
-    const U_SEG = 256;
-    const V_SEG = 24;
-    const BOUNDARY_SEG = 512;
+  <script>
+    (function () {
+      const HOLD = 1500;
+      const DUR  = 4200;
 
-    const params = {
-      R: 2,
-      w: 0.6,
-      widthStretch: 1.0,
-      segments: 1,
-      cutProgress: 0,
-      spread: 0,
-      traceProgress: 0,
-      displayMode: "both",
-      autoTracing: false,
-      autoCutting: false,
-    };
+      let animId = null;
+      let phase = 'hold';
+      let t0 = performance.now();
+      let fromFold = {};
+      let fold = {};
+      let applyFn = () => {};
+      let resetFoldFn = () => {};
+      let staggerUnfoldFn = () => {};
+      let staggerFoldFn = () => {};
 
-    let mobiusStrips = [];
-    let stripMaterials = [];
-    let divisionLines = [];
-    let spreadCurrent = 0;
-    let spreadTarget = 0;
-    let lastRebuildSpread = -1;
-
-    const container = document.getElementById("canvas-container");
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x060a12);
-    scene.fog = new THREE.FogExp2(0x060a12, 0.028);
-
-    const camera = new THREE.PerspectiveCamera(
-      48,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      100
-    );
-    camera.position.set(4.8, 2.8, 5.2);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
-    container.appendChild(renderer.domElement);
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.06;
-    controls.minDistance = 2.5;
-    controls.maxDistance = 36;
-
-    const ambient = new THREE.AmbientLight(0x304060, 0.5);
-    scene.add(ambient);
-
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
-    keyLight.position.set(6, 8, 5);
-    scene.add(keyLight);
-
-    const fillLight = new THREE.DirectionalLight(0x6080c0, 0.6);
-    fillLight.position.set(-5, 2, -4);
-    scene.add(fillLight);
-
-    const rimLight = new THREE.DirectionalLight(0xffe8c0, 0.85);
-    rimLight.position.set(0, 3, -6);
-    scene.add(rimLight);
-
-    const grid = new THREE.GridHelper(14, 28, 0x1a2840, 0x121c2e);
-    grid.position.y = -2.8;
-    scene.add(grid);
-
-    const starGeo = new THREE.BufferGeometry();
-    const starCount = 400;
-    const starPos = new Float32Array(starCount * 3);
-    for (let i = 0; i < starCount; i++) {
-      const r = 8 + Math.random() * 22;
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(2 * Math.random() - 1);
-      starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      starPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) * 0.4;
-      starPos[i * 3 + 2] = r * Math.cos(phi);
-    }
-    starGeo.setAttribute("position", new THREE.BufferAttribute(starPos, 3));
-    const stars = new THREE.Points(
-      starGeo,
-      new THREE.PointsMaterial({ color: 0x8899bb, size: 0.04, transparent: true, opacity: 0.7 })
-    );
-    scene.add(stars);
-
-    const mobiusGroup = new THREE.Group();
-    scene.add(mobiusGroup);
-
-    let boundaryGroup = new THREE.Group();
-    mobiusGroup.add(boundaryGroup);
-
-    function mobiusPoint(R, w, u, v) {
-      const cu = Math.cos(u);
-      const su = Math.sin(u);
-      const ch = Math.cos(u / 2);
-      const sh = Math.sin(u / 2);
-      const scale = R + v * ch;
-      return new THREE.Vector3(scale * cu, scale * su, v * sh);
-    }
-
-    /** 沿商空间边界：v=+w/2 的 u:0→2π，再 v=-w/2 的 u:0→2π */
-    function mobiusBoundaryPoint(R, w, t) {
-      const halfW = w / 2;
-      const uFull = Math.PI * 2;
-      const s = Math.min(Math.max(t, 0), 1);
-      if (s >= 1) return mobiusPoint(R, w, uFull, -halfW);
-      const local = s * 2;
-      if (local <= 1) return mobiusPoint(R, w, local * uFull, halfW);
-      return mobiusPoint(R, w, (local - 1) * uFull, -halfW);
-    }
-
-    function buildArcLengthTable(points) {
-      const lengths = [0];
-      for (let i = 1; i < points.length; i++) {
-        lengths.push(lengths[i - 1] + points[i].distanceTo(points[i - 1]));
-      }
-      return lengths;
-    }
-
-    function resampleByArcLength(points, targetCount) {
-      if (points.length < 2) return points.slice();
-      const lengths = buildArcLengthTable(points);
-      const total = lengths[lengths.length - 1];
-      if (total < 1e-8) return [points[0].clone()];
-
-      const out = [];
-      for (let j = 0; j <= targetCount; j++) {
-        const target = (j / targetCount) * total;
-        let i = 1;
-        while (i < lengths.length && lengths[i] < target) i++;
-        if (i >= points.length) {
-          out.push(points[points.length - 1].clone());
-          continue;
-        }
-        const segStart = lengths[i - 1];
-        const segLen = lengths[i] - segStart;
-        const alpha = segLen > 1e-8 ? (target - segStart) / segLen : 0;
-        out.push(new THREE.Vector3().lerpVectors(points[i - 1], points[i], alpha));
-      }
-      return out;
-    }
-
-    function pointAtArcLength(points, lengths, dist) {
-      const total = lengths[lengths.length - 1];
-      const target = Math.min(Math.max(dist, 0), total);
-      let i = 1;
-      while (i < lengths.length && lengths[i] < target) i++;
-      if (i >= points.length) return points[points.length - 1].clone();
-      const segStart = lengths[i - 1];
-      const segLen = lengths[i] - segStart;
-      const alpha = segLen > 1e-8 ? (target - segStart) / segLen : 0;
-      return new THREE.Vector3().lerpVectors(points[i - 1], points[i], alpha);
-    }
-
-    function slicePathByArcLength(points, lengths, progress) {
-      const total = lengths[lengths.length - 1];
-      const target = total * Math.min(Math.max(progress, 0), 1);
-      const out = [points[0].clone()];
-      for (let i = 1; i < points.length; i++) {
-        if (lengths[i] <= target + 1e-9) {
-          out.push(points[i].clone());
-        } else {
-          out.push(pointAtArcLength(points, lengths, target));
-          break;
-        }
-      }
-      return out;
-    }
-
-    const boundaryPathCache = { valid: false, points: null, lengths: null };
-
-    function getBoundaryPath(R, w) {
-      if (boundaryPathCache.valid && boundaryPathCache.points) {
-        return boundaryPathCache;
-      }
-      const dense = BOUNDARY_SEG * 3;
-      const raw = [];
-      for (let i = 0; i <= dense; i++) {
-        raw.push(mobiusBoundaryPoint(R, w, i / dense));
-      }
-      const points = resampleByArcLength(raw, BOUNDARY_SEG);
-      const lengths = buildArcLengthTable(points);
-      boundaryPathCache.valid = true;
-      boundaryPathCache.points = points;
-      boundaryPathCache.lengths = lengths;
-      return boundaryPathCache;
-    }
-
-    function invalidateBoundaryCache() {
-      boundaryPathCache.valid = false;
-      boundaryPathCache.points = null;
-      boundaryPathCache.lengths = null;
-    }
-
-    function gapRatioForSegments(segCount, spread = 0) {
-      if (segCount <= 1) return 0;
-      const baseGap = 0.045 + (segCount - 1) * 0.012;
-      const spreadFactor = Math.min(spread / 0.1, 1);
-      return baseGap * spreadFactor;
-    }
-
-    function segmentVRange(segCount, segIndex, w, spread = 0) {
-      const halfW = w / 2;
-      if (segCount <= 1) return { vMin: -halfW, vMax: halfW };
-      const gap = w * gapRatioForSegments(segCount, spread);
-      const stripW = (w - (segCount - 1) * gap) / segCount;
-      const vMin = -halfW + segIndex * (stripW + gap);
-      return { vMin, vMax: vMin + stripW };
-    }
-
-    function stripSpreadIndex(segIndex, segCount) {
-      return segIndex - (segCount - 1) * 0.5;
-    }
-
-    function mobiusBitangent(R, w, u, v) {
-      const p = mobiusPoint(R, w, u, v);
-      const pV = mobiusPoint(R, w, u, v + 1e-4);
-      return new THREE.Vector3().subVectors(pV, p).normalize();
-    }
-
-    function stripPoint(R, w, u, v, segIndex, segCount, spread) {
-      const p = mobiusPoint(R, w, u, v);
-      if (spread <= 0 || segCount <= 1) return p;
-      const idx = stripSpreadIndex(segIndex, segCount);
-      return p.addScaledVector(mobiusBitangent(R, w, u, v), spread * idx);
-    }
-
-    function buildStripGeometry(
-      R, w, segIndex, segCount, spread, cutProgress
-    ) {
-      const uFull = Math.PI * 2;
-      const uMax = Math.max(0.002, cutProgress) * uFull;
-      const uSeg = Math.max(4, Math.floor(U_SEG * cutProgress));
-      const { vMin, vMax } = segmentVRange(segCount, segIndex, w, spread);
-      const stripW = vMax - vMin;
-      const vSeg = Math.max(3, Math.floor(V_SEG * (stripW / w)));
-      const positions = [];
-      const normals = [];
-      const indices = [];
-      const eps = 1e-4;
-
-      for (let i = 0; i <= uSeg; i++) {
-        const u = (i / uSeg) * uMax;
-        for (let j = 0; j <= vSeg; j++) {
-          const v = vMin + (j / vSeg) * stripW;
-          const p = stripPoint(R, w, u, v, segIndex, segCount, spread);
-          positions.push(p.x, p.y, p.z);
-
-          const pU = stripPoint(R, w, u + eps, v, segIndex, segCount, spread);
-          const pV = stripPoint(R, w, u, v + eps, segIndex, segCount, spread);
-          const tu = new THREE.Vector3().subVectors(pU, p);
-          const tv = new THREE.Vector3().subVectors(pV, p);
-          const n = new THREE.Vector3().crossVectors(tu, tv).normalize();
-          normals.push(n.x, n.y, n.z);
-        }
+      function ease(t) {
+        return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
       }
 
-      for (let i = 0; i < uSeg; i++) {
-        for (let j = 0; j < vSeg; j++) {
-          const a = i * (vSeg + 1) + j;
-          const b = a + vSeg + 1;
-          indices.push(a, b, a + 1);
-          indices.push(b, b + 1, a + 1);
-        }
-      }
+      function lerp(a, b, t) { return a + (b - a) * t; }
 
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-      geo.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
-      geo.setIndex(indices);
-      geo.computeBoundingSphere();
-      return geo;
-    }
-
-    function makeStripMaterial() {
-      const c = new THREE.Color().setHSL(0.12, 0.72, 0.52);
-      return new THREE.MeshStandardMaterial({
-        color: c,
-        emissive: c.clone().multiplyScalar(0.14),
-        metalness: 0.58,
-        roughness: 0.32,
-        side: THREE.DoubleSide,
-      });
-    }
-
-    function recalcSpreadTarget() {
-      const n = Math.round(params.segments);
-      spreadTarget = n <= 1 ? 0 : params.spread;
-    }
-
-    function divisionVPositions(segCount, w, spread = 0) {
-      if (segCount <= 1) return [];
-      const halfW = w / 2;
-      const gap = w * gapRatioForSegments(segCount, spread);
-      const stripW = (w - (segCount - 1) * gap) / segCount;
-      const positions = [];
-      for (let k = 0; k < segCount - 1; k++) {
-        const vMin = -halfW + k * (stripW + gap);
-        positions.push(vMin + stripW + gap * 0.5);
-      }
-      return positions;
-    }
-
-    function disposeDivisionLines() {
-      divisionLines.forEach((obj) => {
-        obj.traverse((child) => {
-          if (child.geometry) child.geometry.dispose();
-          if (child.material) child.material.dispose();
-        });
-        mobiusGroup.remove(obj);
-      });
-      divisionLines = [];
-    }
-
-    function buildDivisionLine(R, w, vLine, cutProgress) {
-      const uFull = Math.PI * 2;
-      const uMax = Math.max(0.002, cutProgress) * uFull;
-      const uSeg = Math.max(32, Math.floor(U_SEG * cutProgress));
-      const points = [];
-      for (let i = 0; i <= uSeg; i++) {
-        const u = (i / uSeg) * uMax;
-        points.push(mobiusPoint(R, w, u, vLine));
-      }
-      if (points.length < 2) return null;
-
-      const curve = polylineCurve(points);
-      const tubularSegments = Math.max(points.length - 1, 8);
-      const coreGeo = new THREE.TubeGeometry(curve, tubularSegments, 0.014, 6, false);
-      const coreMat = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        toneMapped: false,
-      });
-      const core = new THREE.Mesh(coreGeo, coreMat);
-      core.renderOrder = 4;
-
-      const glowGeo = new THREE.TubeGeometry(curve, tubularSegments, 0.028, 6, false);
-      const glowMat = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
-        transparent: true,
-        opacity: 0.28,
-        depthWrite: false,
-        toneMapped: false,
-      });
-      const glow = new THREE.Mesh(glowGeo, glowMat);
-      glow.renderOrder = 3;
-
-      const group = new THREE.Group();
-      group.add(glow);
-      group.add(core);
-      return group;
-    }
-
-    function shouldShowDivisionLines() {
-      if (params.spread > 0.001 || spreadCurrent > 0.001) return false;
-      if (effectiveCutProgress() >= 1) return false;
-      const n = Math.round(params.segments);
-      return n > 1;
-    }
-
-    function updateDivisionLines() {
-      disposeDivisionLines();
-      if (!shouldShowDivisionLines()) return;
-
-      const { R, w, segments, widthStretch } = params;
-      const wEff = w * widthStretch;
-      const n = Math.round(segments);
-      if (n <= 1) return;
-
-      const cut = effectiveCutProgress();
-      const lineProgress = cut;
-      if (lineProgress <= 0) return;
-      const vLines = divisionVPositions(n, wEff, spreadCurrent);
-      for (const vLine of vLines) {
-        const line = buildDivisionLine(R, wEff, vLine, lineProgress);
-        if (line) {
-          mobiusGroup.add(line);
-          divisionLines.push(line);
-        }
-      }
-    }
-
-    function disposeMobiusStrips() {
-      mobiusStrips.forEach((mesh) => {
-        mesh.geometry.dispose();
-        mobiusGroup.remove(mesh);
-      });
-      mobiusStrips = [];
-      stripMaterials.forEach((m) => m.dispose());
-      stripMaterials = [];
-    }
-
-    function disposeBoundary() {
-      while (boundaryGroup.children.length) {
-        const child = boundaryGroup.children[0];
-        boundaryGroup.remove(child);
-        child.traverse((obj) => {
-          if (obj.geometry) obj.geometry.dispose();
-          if (obj.material) {
-            const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-            mats.forEach((m) => m.dispose());
-          }
+      function addDots(el, w, h, points) {
+        (points || [[0,0],[w,0],[w,h],[0,h]]).forEach(([x,y]) => {
+          const d = document.createElement('div');
+          d.className = 'dot';
+          d.style.left = x + 'px';
+          d.style.top  = y + 'px';
+          el.appendChild(d);
         });
       }
-    }
 
-    function polylineCurve(points) {
-      const path = new THREE.CurvePath();
-      for (let i = 0; i < points.length - 1; i++) {
-        path.add(new THREE.LineCurve3(points[i], points[i + 1]));
+      function triDots(el, w, h) {
+        addDots(el, w, h, [[w/2, 0], [0, h], [w, h]]);
       }
-      return path;
-    }
 
-    function buildBoundaryTube(points, lengths, progress) {
-      const slice = slicePathByArcLength(points, lengths, progress);
-      if (slice.length < 2) return null;
-
-      const curve = polylineCurve(slice);
-      const tubularSegments = Math.max(slice.length - 1, 4);
-      const geo = new THREE.TubeGeometry(curve, tubularSegments, 0.028, 8, false);
-      const mat = new THREE.MeshBasicMaterial({
-        color: 0xff7722,
-        transparent: true,
-        opacity: 0.95,
-        toneMapped: false,
-      });
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.renderOrder = 2;
-
-      const glowGeo = new THREE.TubeGeometry(curve, tubularSegments, 0.055, 8, false);
-      const glowMat = new THREE.MeshBasicMaterial({
-        color: 0xff5500,
-        transparent: true,
-        opacity: 0.22,
-        depthWrite: false,
-        toneMapped: false,
-      });
-      const glow = new THREE.Mesh(glowGeo, glowMat);
-      glow.renderOrder = 1;
-
-      const group = new THREE.Group();
-      group.add(glow);
-      group.add(mesh);
-      return group;
-    }
-
-    function updateBoundaries() {
-      disposeBoundary();
-      const { R, w, traceProgress, widthStretch } = params;
-      const wEff = w * widthStretch;
-      const { points, lengths } = getBoundaryPath(R, wEff);
-
-      if (traceProgress > 0) {
-        const tube = buildBoundaryTube(points, lengths, traceProgress);
-        if (tube) boundaryGroup.add(tube);
+      function circleDots(el, d) {
+        const r = d / 2;
+        addDots(el, d, d, [[r, 0], [d, r], [r, d], [0, r]]);
       }
-    }
 
-    function effectiveCutProgress() {
-      const n = Math.round(params.segments);
-      if (n <= 1) return 1;
-      return params.cutProgress;
-    }
+      function makeFace(cls, w, h, color, extra) {
+        const f = document.createElement('div');
+        f.className = 'face ' + cls;
+        f.style.width = w + 'px';
+        f.style.height = h + 'px';
+        if (color) f.style.background = color;
+        if (extra) extra(f, w, h);
+        return f;
+      }
 
-    function updateMobiusStrips() {
-      disposeMobiusStrips();
-      const { R, w, segments, widthStretch } = params;
-      const wEff = w * widthStretch;
-      const n = Math.round(segments);
-      const cut = effectiveCutProgress();
-      updateDivisionLines();
+      function makeWire(cls, w, h, hidden, extra) {
+        const wEl = document.createElement('div');
+        wEl.className = 'wire' + (hidden ? ' hidden' : '') + (cls ? ' ' + cls : '');
+        wEl.style.width = w + 'px';
+        wEl.style.height = h + 'px';
+        if (extra) extra(wEl, w, h);
+        return wEl;
+      }
 
-      if (cut <= 0 && spreadCurrent <= 0.001) {
-        if (n > 1) {
-          const geo = buildStripGeometry(
-            R, wEff, 0, 1, 0, 1
-          );
-          const mat = makeStripMaterial();
-          stripMaterials.push(mat);
-          const mesh = new THREE.Mesh(geo, mat);
-          mobiusGroup.add(mesh);
-          mobiusStrips.push(mesh);
+      function makeHinge(x, y, w, h, origin) {
+        const hinge = document.createElement('div');
+        hinge.className = 'hinge';
+        hinge.style.left = x + 'px';
+        hinge.style.top = y + 'px';
+        hinge.style.width = w + 'px';
+        hinge.style.height = h + 'px';
+        if (origin) hinge.style.transformOrigin = origin;
+        return hinge;
+      }
+
+      // ── 正方体 / 长方体（W×H×D：宽×高×深） ──
+      function buildBox(assembly, W, H, D, colors) {
+        const faces = document.createElement('div');
+        faces.className = 'faces';
+        faces.style.width = W + 'px';
+        faces.style.height = D + 'px';
+
+        const skel = document.createElement('div');
+        skel.className = 'skeleton';
+        skel.style.width = W + 'px';
+        skel.style.height = D + 'px';
+
+        const h = {};
+
+        function skHinge(cls, x, y, w, ht, origin, lock, child) {
+          const el = makeHinge(x, y, w, ht, origin);
+          el.className = 'hinge ' + cls;
+          el.style.transform = lock;
+          el.appendChild(child);
+          skel.appendChild(el);
         }
-        applyDisplayMode();
-        return;
+
+        // 底面 W×D
+        const fBot = makeFace('face-bottom', W, D, colors.bottom);
+        const wBot = makeWire('', W, D, true);
+        faces.appendChild(fBot);
+        skel.appendChild(wBot);
+        addDots(wBot, W, D);
+
+        // 左 D×H
+        const hL = makeHinge(-D, 0, D, H, 'right center');
+        const fL = makeFace('', D, H, colors.left);
+        const wL = makeWire('', D, H, true);
+        hL.appendChild(fL);
+        faces.appendChild(hL);
+        skHinge('hinge-left', -D, 0, D, H, 'right center', 'rotateY(90deg)', wL);
+        addDots(wL, D, H);
+        h.left = hL;
+
+        // 右 D×H
+        const hR = makeHinge(W, 0, D, H, 'left center');
+        const fR = makeFace('', D, H, colors.right);
+        const wR = makeWire('', D, H, false);
+        hR.appendChild(fR);
+        faces.appendChild(hR);
+        skHinge('hinge-right', W, 0, D, H, 'left center', 'rotateY(-90deg)', wR);
+        addDots(wR, D, H);
+        h.right = hR;
+
+        // 后 W×H
+        const hB = makeHinge(0, -H, W, H, 'bottom center');
+        const fB = makeFace('', W, H, colors.back);
+        const wB = makeWire('', W, H, true);
+        hB.appendChild(fB);
+        faces.appendChild(hB);
+        skHinge('hinge-back', 0, -H, W, H, 'bottom center', 'rotateX(-90deg)', wB);
+        addDots(wB, W, H);
+        h.back = hB;
+
+        // 顶 W×D（附在后壁上）
+        const hT = makeHinge(0, -D, W, D, 'bottom center');
+        const fT = makeFace('', W, D, colors.top);
+        const wT = makeWire('', W, D, false);
+        hT.appendChild(fT);
+        hB.appendChild(hT);
+        skHinge('hinge-top', 0, -D, W, D, 'bottom center', 'rotateX(-90deg)', wT);
+        addDots(wT, W, D);
+        h.top = hT;
+
+        // 前 W×H
+        const hF = makeHinge(0, D, W, H, 'top center');
+        const fF = makeFace('', W, H, colors.front);
+        const wF = makeWire('', W, H, false);
+        hF.appendChild(fF);
+        faces.appendChild(hF);
+        skHinge('hinge-front', 0, D, W, H, 'top center', 'rotateX(90deg)', wF);
+        addDots(wF, W, H);
+        h.front = hF;
+
+        assembly.style.width = W + 'px';
+        assembly.style.height = D + 'px';
+        assembly.appendChild(faces);
+        assembly.appendChild(skel);
+
+        const keys = ['left','right','back','front','top'];
+        fold = Object.fromEntries(keys.map(k => [k, 1]));
+
+        applyFn = () => {
+          h.left.style.transform  = `rotateY(${ fold.left  * 90}deg)`;
+          h.right.style.transform = `rotateY(${-fold.right * 90}deg)`;
+          h.back.style.transform  = `rotateX(${-fold.back  * 90}deg)`;
+          h.front.style.transform = `rotateX(${ fold.front * 90}deg)`;
+          h.top.style.transform   = `rotateX(${-fold.top   * 90}deg)`;
+        };
+
+        resetFoldFn = () => Object.assign(fold, { left:1, right:1, back:1, front:1, top:1 });
+
+        staggerUnfoldFn = (t) => {
+          fold.left  = lerp(fromFold.left,  0, Math.min(t/0.25, 1));
+          fold.right = lerp(fromFold.right, 0, Math.min(t/0.25, 1));
+          fold.back  = lerp(fromFold.back,  0, ease(Math.max(0, Math.min((t-0.15)/0.3, 1))));
+          fold.front = lerp(fromFold.front, 0, ease(Math.max(0, Math.min((t-0.35)/0.3, 1))));
+          fold.top   = lerp(fromFold.top,   0, ease(Math.max(0, Math.min((t-0.55)/0.35, 1))));
+        };
+
+        staggerFoldFn = (t) => {
+          fold.top   = lerp(fromFold.top,   1, ease(Math.min(t/0.35, 1)));
+          fold.front = lerp(fromFold.front, 1, ease(Math.max(0, Math.min((t-0.15)/0.3, 1))));
+          fold.back  = lerp(fromFold.back,  1, ease(Math.max(0, Math.min((t-0.35)/0.3, 1))));
+          const s = ease(Math.max(0, Math.min((t-0.55)/0.3, 1)));
+          fold.left  = lerp(fromFold.left,  1, s);
+          fold.right = lerp(fromFold.right, 1, s);
+        };
       }
 
-      for (let k = 0; k < n; k++) {
-        const geo = buildStripGeometry(
-          R, wEff, k, n, spreadCurrent, 1
-        );
-        const mat = makeStripMaterial();
-        stripMaterials.push(mat);
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.castShadow = false;
-        mobiusGroup.add(mesh);
-        mobiusStrips.push(mesh);
-      }
-      lastRebuildSpread = spreadCurrent;
-      applyDisplayMode();
-    }
+      // ── 三角锥 ──
+      function buildPyramid(assembly) {
+        const TW = 130; // 三角形宽
+        const TH = 112; // 三角形高 ≈ 等边
 
-    function applyDisplayMode() {
-      const mode = params.displayMode;
-      const showRing = mode !== "boundary";
-      mobiusStrips.forEach((m) => {
-        m.visible = showRing;
-      });
-      divisionLines.forEach((line) => {
-        line.visible = showRing;
-      });
-      boundaryGroup.visible = mode !== "ring";
-    }
+        const faces = document.createElement('div');
+        faces.className = 'faces';
+        faces.style.width = (TW * 2.5) + 'px';
+        faces.style.height = (TH * 2.5) + 'px';
 
-    function updateStatus() {
-      const el = document.getElementById("status");
-      const cut = params.cutProgress;
-      const n = Math.round(params.segments);
-      if (n > 1 && cut < 1) {
-        el.className = "pending";
-        el.textContent = `状态：裁剪中… ${Math.round(cut * 100)}%（${n} 条带）`;
-      } else if (n > 1 && cut >= 1 && params.spread > 0) {
-        el.className = "";
-        el.textContent = "✓ 裁剪完成！拖动「拉开它们」观察各环分离";
-      } else if (n > 1 && cut >= 1) {
-        el.className = "";
-        el.textContent = "✓ 裁剪完成！可拉开各条带或继续描边";
-      } else if (params.traceProgress >= 1) {
-        el.className = "";
-        el.textContent = "✓ 描边完成！可切换模式查看";
-      } else if (params.traceProgress > 0) {
-        el.className = "pending";
-        el.textContent = `状态：描边中… ${Math.round(params.traceProgress * 100)}%`;
-      } else {
-        el.className = "pending";
-        el.textContent = "状态：选择等分模式，开始裁剪";
-      }
-    }
+        const skel = document.createElement('div');
+        skel.className = 'skeleton';
+        skel.style.width = (TW * 2.5) + 'px';
+        skel.style.height = (TH * 2.5) + 'px';
 
-    function refresh(force = true) {
-      const spreadChanged =
-        force || Math.abs(spreadCurrent - lastRebuildSpread) > 0.004;
-      if (spreadChanged) {
-        updateMobiusStrips();
-      }
-    }
+        const h = {};
 
-    function refreshAll() {
-      recalcSpreadTarget();
-      invalidateBoundaryCache();
-      updateMobiusStrips();
-      updateBoundaries();
-      updateStatus();
-    }
+        function makeTri(color, hidden) {
+          const f = document.createElement('div');
+          f.className = 'face tri';
+          f.style.width = TW + 'px';
+          f.style.height = TH + 'px';
+          const fill = document.createElement('div');
+          fill.className = 'tri-fill';
+          fill.style.background = color;
+          f.appendChild(fill);
 
-    recalcSpreadTarget();
-    refreshAll();
+          const w = document.createElement('div');
+          w.className = 'wire tri' + (hidden ? ' hidden' : '');
+          w.style.width = TW + 'px';
+          w.style.height = TH + 'px';
+          const wfill = document.createElement('div');
+          wfill.className = 'tri-fill';
+          w.appendChild(wfill);
 
-    const clock = new THREE.Clock();
-    let autoSpreadTriggered = false;
-
-    function animate() {
-      requestAnimationFrame(animate);
-      const dt = clock.getDelta();
-
-      if (params.autoTracing && params.traceProgress < 1) {
-        params.traceProgress = Math.min(1, params.traceProgress + dt * 0.28);
-        document.getElementById("trace").value = params.traceProgress;
-        document.getElementById("val-trace").textContent =
-          Math.round(params.traceProgress * 100) + "%";
-        updateBoundaries();
-        updateStatus();
-        if (params.traceProgress >= 1) {
-          params.autoTracing = false;
-          document.getElementById("btn-auto-trace").classList.remove("active");
+          return { f, w };
         }
+
+        const colors = {
+          base: '#5cd65c', side1: '#4a8fd4', side2: '#e8d5a0', side3: '#ffd700'
+        };
+
+        // 底面三角形（锚定在中心）
+        const baseTri = makeTri(colors.base, true);
+        const fBase = baseTri.f;
+        fBase.style.left = (TW * 2.5 - TW) / 2 + 'px';
+        fBase.style.top = (TH * 2.5 - TH) / 2 + 'px';
+        faces.appendChild(fBase);
+        const wBase = baseTri.w;
+        wBase.style.left = (TW * 2.5 - TW) / 2 + 'px';
+        wBase.style.top = (TH * 2.5 - TH) / 2 + 'px';
+        skel.appendChild(wBase);
+        triDots(wBase, TW, TH);
+
+        const centerX = (TW * 2.5 - TW) / 2;
+        const centerY = (TH * 2.5 - TH) / 2;
+
+        // 侧面1 - 在底面上方（绕底面顶边旋转）
+        const side1Tri = makeTri(colors.side1, false);
+        const hSide1 = makeHinge(centerX, centerY, TW, TH, 'bottom center');
+        hSide1.appendChild(side1Tri.f);
+        faces.appendChild(hSide1);
+        const skSide1 = makeHinge(centerX, centerY, TW, TH, 'bottom center');
+        skSide1.style.transform = 'rotateX(-90deg)';
+        skSide1.appendChild(side1Tri.w);
+        skel.appendChild(skSide1);
+        triDots(side1Tri.w, TW, TH);
+        h.side1 = hSide1;
+
+        // 侧面2 - 在底面左下（绕底面左边旋转）
+        const side2Tri = makeTri(colors.side2, false);
+        const hSide2 = makeHinge(centerX, centerY, TW, TH, 'right center');
+        hSide2.appendChild(side2Tri.f);
+        faces.appendChild(hSide2);
+        const skSide2 = makeHinge(centerX, centerY, TW, TH, 'right center');
+        skSide2.style.transform = 'rotateY(90deg)';
+        skSide2.appendChild(side2Tri.w);
+        skel.appendChild(skSide2);
+        triDots(side2Tri.w, TW, TH);
+        h.side2 = hSide2;
+
+        // 侧面3 - 在底面右下（绕底面右边旋转）
+        const side3Tri = makeTri(colors.side3, false);
+        const hSide3 = makeHinge(centerX, centerY, TW, TH, 'left center');
+        hSide3.appendChild(side3Tri.f);
+        faces.appendChild(hSide3);
+        const skSide3 = makeHinge(centerX, centerY, TW, TH, 'left center');
+        skSide3.style.transform = 'rotateY(-90deg)';
+        skSide3.appendChild(side3Tri.w);
+        skel.appendChild(skSide3);
+        triDots(side3Tri.w, TW, TH);
+        h.side3 = hSide3;
+
+        assembly.style.width = (TW * 2.5) + 'px';
+        assembly.style.height = (TH * 2.5) + 'px';
+        assembly.appendChild(faces);
+        assembly.appendChild(skel);
+
+        fold = { side1: 1, side2: 1, side3: 1 };
+
+        applyFn = () => {
+          h.side1.style.transform = `rotateX(${-fold.side1 * 90}deg)`;
+          h.side2.style.transform = `rotateY(${ fold.side2 * 90}deg)`;
+          h.side3.style.transform = `rotateY(${-fold.side3 * 90}deg)`;
+        };
+
+        resetFoldFn = () => Object.assign(fold, { side1: 1, side2: 1, side3: 1 });
+
+        staggerUnfoldFn = (t) => {
+          fold.side1 = lerp(fromFold.side1, 0, ease(Math.min(t / 0.25, 1)));
+          fold.side2 = lerp(fromFold.side2, 0, ease(Math.max(0, Math.min((t - 0.15) / 0.25, 1))));
+          fold.side3 = lerp(fromFold.side3, 0, ease(Math.max(0, Math.min((t - 0.3) / 0.25, 1))));
+        };
+
+        staggerFoldFn = (t) => {
+          fold.side3 = lerp(fromFold.side3, 1, ease(Math.min(t / 0.25, 1)));
+          fold.side2 = lerp(fromFold.side2, 1, ease(Math.max(0, Math.min((t - 0.15) / 0.25, 1))));
+          fold.side1 = lerp(fromFold.side1, 1, ease(Math.max(0, Math.min((t - 0.3) / 0.25, 1))));
+        };
       }
 
-      if (params.autoCutting && params.cutProgress < 1) {
-        params.cutProgress = Math.min(1, params.cutProgress + dt * 0.32);
-        document.getElementById("cut").value = params.cutProgress;
-        document.getElementById("val-cut").textContent =
-          Math.round(params.cutProgress * 100) + "%";
-        updateMobiusStrips();
-        updateStatus();
-        if (params.cutProgress >= 1) {
-          params.autoCutting = false;
-          document.getElementById("btn-auto-cut").classList.remove("active");
-        }
-      }
+      // ── 圆柱 ──
+      function buildCylinder(assembly) {
+        const D = 120;
+        const H = 130;
+        const RW = Math.round(Math.PI * D); // 侧面展开宽 ≈ 周长
 
-      const cutProg = effectiveCutProgress();
-      if (cutProg >= 1 && params.segments > 1) {
-        if (!autoSpreadTriggered) {
-          autoSpreadTriggered = true;
-          if (params.spread < 0.2) {
-            params.spread = 0.5;
-            document.getElementById("spread").value = params.spread;
-            document.getElementById("val-spread").textContent = params.spread.toFixed(1);
-            recalcSpreadTarget();
-          }
-        }
-      } else {
-        autoSpreadTriggered = false;
-      }
+        const faces = document.createElement('div');
+        faces.className = 'faces';
+        faces.style.width = Math.max(D, RW) + 'px';
+        faces.style.height = (D + H + D) + 'px';
 
-      if (Math.abs(spreadTarget - spreadCurrent) > 0.001) {
-        spreadCurrent += (spreadTarget - spreadCurrent) * Math.min(1, dt * 6);
-        updateMobiusStrips();
-      }
+        const skel = document.createElement('div');
+        skel.className = 'skeleton';
+        skel.style.width = Math.max(D, RW) + 'px';
+        skel.style.height = (D + H + D) + 'px';
 
-      controls.update();
-      renderer.render(scene, camera);
-    }
-    animate();
+        const h = {};
+        const colors = { bottom: '#1a5c2e', side: '#4a8fd4', top: '#ffd700' };
 
-    const traceEl = document.getElementById("trace");
-    const cutEl = document.getElementById("cut");
-    const spreadEl = document.getElementById("spread");
-    const widthStretchEl = document.getElementById("width-stretch");
+        // 底圆
+        const fBot = makeFace('circle', D, D, colors.bottom);
+        fBot.style.borderRadius = '50%';
+        fBot.style.left = (Math.max(D, RW) - D) / 2 + 'px';
+        fBot.style.top = '0px';
+        const wBot = makeWire('circle', D, D, true);
+        wBot.style.left = (Math.max(D, RW) - D) / 2 + 'px';
+        wBot.style.top = '0px';
+        faces.appendChild(fBot);
+        skel.appendChild(wBot);
+        circleDots(wBot, D);
 
-    function setSegments(n) {
-      params.segments = n;
-      document.querySelectorAll("#cut-btns .btn-cut").forEach((btn) => {
-        btn.classList.toggle("active", parseInt(btn.dataset.segments, 10) === n);
-      });
-      if (n <= 1) {
-        params.cutProgress = 0;
-        cutEl.value = 0;
-        document.getElementById("val-cut").textContent = "0%";
-        params.spread = 0;
-        spreadEl.value = 0;
-        document.getElementById("val-spread").textContent = "0.0";
-        spreadCurrent = 0;
-        spreadTarget = 0;
-        params.autoCutting = false;
-        document.getElementById("btn-auto-cut").classList.remove("active");
-      } else if (params.cutProgress < 1) {
-        params.autoCutting = true;
-        document.getElementById("btn-auto-cut").classList.add("active");
-      }
-      recalcSpreadTarget();
-      refreshAll();
-    }
-
-    document.querySelectorAll("#cut-btns .btn-cut").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        setSegments(parseInt(btn.dataset.segments, 10));
-      });
-    });
-
-    cutEl.addEventListener("input", () => {
-      params.cutProgress = parseFloat(cutEl.value);
-      params.autoCutting = false;
-      document.getElementById("btn-auto-cut").classList.remove("active");
-      document.getElementById("val-cut").textContent =
-        Math.round(params.cutProgress * 100) + "%";
-      updateMobiusStrips();
-      updateStatus();
-    });
-
-    spreadEl.addEventListener("input", () => {
-      params.spread = parseFloat(spreadEl.value);
-      document.getElementById("val-spread").textContent = params.spread.toFixed(1);
-      recalcSpreadTarget();
-      updateDivisionLines();
-    });
-
-    widthStretchEl.addEventListener("input", () => {
-      params.widthStretch = parseFloat(widthStretchEl.value);
-      document.getElementById("val-width-stretch").textContent = params.widthStretch.toFixed(1) + "×";
-      invalidateBoundaryCache();
-      updateMobiusStrips();
-      updateBoundaries();
-    });
-
-    document.getElementById("btn-auto-cut").addEventListener("click", function () {
-      if (params.segments <= 1) {
-        setSegments(2);
-      }
-      params.autoCutting = !params.autoCutting;
-      this.classList.toggle("active", params.autoCutting);
-      if (params.autoCutting && params.cutProgress >= 1) {
-        params.cutProgress = 0;
-        cutEl.value = 0;
-        document.getElementById("val-cut").textContent = "0%";
-        updateMobiusStrips();
-        updateStatus();
-      }
-    });
-
-    document.getElementById("btn-reset-cut").addEventListener("click", () => {
-      params.autoCutting = false;
-      params.cutProgress = 0;
-      params.spread = 0;
-      spreadCurrent = 0;
-      spreadTarget = 0;
-      cutEl.value = 0;
-      spreadEl.value = 0;
-      document.getElementById("btn-auto-cut").classList.remove("active");
-      document.getElementById("val-cut").textContent = "0%";
-      document.getElementById("val-spread").textContent = "0.0";
-      refreshAll();
-    });
-
-    traceEl.addEventListener("input", () => {
-      params.traceProgress = parseFloat(traceEl.value);
-      params.autoTracing = false;
-      document.getElementById("btn-auto-trace").classList.remove("active");
-      document.getElementById("val-trace").textContent =
-        Math.round(params.traceProgress * 100) + "%";
-      updateBoundaries();
-      updateStatus();
-    });
-
-    document.getElementById("btn-auto-trace").addEventListener("click", function () {
-      params.autoTracing = !params.autoTracing;
-      this.classList.toggle("active", params.autoTracing);
-      if (params.autoTracing && params.traceProgress >= 1) {
-        params.traceProgress = 0;
-        traceEl.value = 0;
-        document.getElementById("val-trace").textContent = "0%";
-        updateBoundaries();
-        updateStatus();
-      }
-    });
-
-    document.getElementById("btn-reset-trace").addEventListener("click", () => {
-      params.autoTracing = false;
-      params.traceProgress = 0;
-      traceEl.value = 0;
-      document.getElementById("btn-auto-trace").classList.remove("active");
-      document.getElementById("val-trace").textContent = "0%";
-      updateBoundaries();
-      updateStatus();
-    });
-
-    document.querySelectorAll(".mode-btns button").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        params.displayMode = btn.dataset.mode;
-        document.querySelectorAll(".mode-btns button").forEach((b) => {
-          b.classList.toggle("active", b === btn);
+        // 侧面：铰接在底圆下方，折起为柱面
+        const hSide = makeHinge((Math.max(D, RW) - RW) / 2, D, RW, H, 'top center');
+        const fSide = makeFace('', RW, H, colors.side);
+        hSide.appendChild(fSide);
+        faces.appendChild(hSide);
+        const wSide = makeWire('', RW, H, false);
+        const skSide = makeHinge((Math.max(D, RW) - RW) / 2, D, RW, H, 'top center');
+        skSide.style.transform = 'rotateX(90deg)';
+        skSide.appendChild(wSide);
+        skel.appendChild(skSide);
+        addDots(wSide, RW, H);
+        [0.25, 0.5, 0.75].forEach(p => {
+          const line = document.createElement('i');
+          line.style.cssText = `position:absolute;left:${p*RW}px;top:0;width:2px;height:${H}px;background:repeating-linear-gradient(to bottom,#111 0 5px,transparent 5px 9px);transform-origin:top center;`;
+          skSide.appendChild(line);
         });
-        applyDisplayMode();
-      });
-    });
+        h.side = hSide;
 
-    window.addEventListener("resize", () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
+        // 顶圆铰接在侧面下方
+        const hTop = makeHinge((Math.max(D, RW) - D) / 2, D + H, D, D, 'top center');
+        const fTop = makeFace('circle', D, D, colors.top);
+        fTop.style.borderRadius = '50%';
+        hTop.appendChild(fTop);
+        hSide.appendChild(hTop);
+        const skTop = makeHinge((Math.max(D, RW) - D) / 2, D + H, D, D, 'top center');
+        skTop.style.transform = 'rotateX(90deg)';
+        const wTop = makeWire('circle', D, D, false);
+        skTop.appendChild(wTop);
+        skSide.appendChild(skTop);
+        circleDots(wTop, D);
+        h.top = hTop;
+
+        assembly.style.width = Math.max(D, RW) + 'px';
+        assembly.style.height = (D + H + D) + 'px';
+        assembly.appendChild(faces);
+        assembly.appendChild(skel);
+
+        fold = { side: 1, top: 1 };
+
+        applyFn = () => {
+          h.side.style.transform = `rotateX(${ fold.side * 90}deg)`;
+          h.top.style.transform  = `rotateX(${ fold.top * 90}deg)`;
+        };
+
+        resetFoldFn = () => Object.assign(fold, { side:1, top:1 });
+
+        staggerUnfoldFn = (t) => {
+          fold.side = lerp(fromFold.side, 0, ease(Math.min(t/0.55, 1)));
+          fold.top  = lerp(fromFold.top,  0, ease(Math.max(0, Math.min((t-0.35)/0.45, 1))));
+        };
+
+        staggerFoldFn = (t) => {
+          fold.top  = lerp(fromFold.top,  1, ease(Math.min(t/0.4, 1)));
+          fold.side = lerp(fromFold.side, 1, ease(Math.max(0, Math.min((t-0.3)/0.5, 1))));
+        };
+      }
+
+      const SHAPES = {
+        cube: (a) => buildBox(a, 120, 120, 120, {
+          bottom:'#1a5c2e', left:'#4a8fd4', right:'#e8d5a0',
+          back:'#b89fd4', front:'#5cd65c', top:'#ffd700'
+        }),
+        cuboid: (a) => buildBox(a, 150, 100, 90, {
+          bottom:'#2d6b4f', left:'#5b9bd5', right:'#d4b896',
+          back:'#9b7ec8', front:'#6ecf6e', top:'#f0c040'
+        }),
+        pyramid: buildPyramid,
+        cylinder: buildCylinder,
+      };
+
+      function beginPhase(name) {
+        phase = name;
+        t0 = performance.now();
+        fromFold = { ...fold };
+      }
+
+      function tick(now) {
+        const elapsed = now - t0;
+        if (phase === 'hold') {
+          resetFoldFn();
+          if (elapsed > HOLD) beginPhase('unfolding');
+        } else if (phase === 'unfolding') {
+          const t = ease(Math.min(elapsed / DUR, 1));
+          staggerUnfoldFn(t);
+          if (elapsed > DUR) beginPhase('hold-flat');
+        } else if (phase === 'hold-flat') {
+          Object.keys(fold).forEach(k => fold[k] = 0);
+          if (elapsed > HOLD) beginPhase('folding');
+        } else if (phase === 'folding') {
+          const t = ease(Math.min(elapsed / DUR, 1));
+          staggerFoldFn(t);
+          if (elapsed > DUR) beginPhase('hold');
+        }
+        applyFn();
+        animId = requestAnimationFrame(tick);
+      }
+
+      function loadShape(name) {
+        if (animId) cancelAnimationFrame(animId);
+        const assembly = document.getElementById('assembly');
+        assembly.innerHTML = '';
+        SHAPES[name](assembly);
+        applyFn();
+        phase = 'hold';
+        t0 = performance.now();
+        fromFold = { ...fold };
+        animId = requestAnimationFrame(tick);
+      }
+
+      document.querySelectorAll('.sidebar button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.sidebar button').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          loadShape(btn.dataset.shape);
+        });
+      });
+
+      loadShape('cube');
+    })();
   </script>
 </body>
 </html>
