@@ -107,9 +107,15 @@
 
     .wire {
       background: transparent;
+      pointer-events: none;
+      z-index: 20;
     }
 
     .wire.hidden { border-style: dashed; }
+
+    .face.circle, .wire.circle {
+      border-radius: 50%;
+    }
 
     .dot {
       position: absolute;
@@ -150,6 +156,7 @@
       let resetFoldFn = () => {};
       let staggerUnfoldFn = () => {};
       let staggerFoldFn = () => {};
+      let animPaused = false;
 
       function ease(t) {
         return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
@@ -157,21 +164,31 @@
 
       function lerp(a, b, t) { return a + (b - a) * t; }
 
+      const BORDER = 2.5;
+
       function addDots(el, w, h, points) {
+        const hb = BORDER / 2;
         (points || [[0,0],[w,0],[w,h],[0,h]]).forEach(([x,y]) => {
           const d = document.createElement('div');
           d.className = 'dot';
-          d.style.left = x + 'px';
-          d.style.top  = y + 'px';
+          d.style.left = (x + hb) + 'px';
+          d.style.top  = (y + hb) + 'px';
           el.appendChild(d);
         });
+      }
+
+      function sizeWithOverlap(el, w, h) {
+        const hb = BORDER / 2;
+        el.style.width = (w + BORDER) + 'px';
+        el.style.height = (h + BORDER) + 'px';
+        el.style.marginLeft = (-hb) + 'px';
+        el.style.marginTop = (-hb) + 'px';
       }
 
       function makeFace(cls, w, h, color, extra) {
         const f = document.createElement('div');
         f.className = 'face ' + cls;
-        f.style.width = w + 'px';
-        f.style.height = h + 'px';
+        sizeWithOverlap(f, w, h);
         if (color) f.style.background = color;
         if (extra) extra(f, w, h);
         return f;
@@ -180,10 +197,56 @@
       function makeWire(cls, w, h, hidden, extra) {
         const wEl = document.createElement('div');
         wEl.className = 'wire' + (hidden ? ' hidden' : '') + (cls ? ' ' + cls : '');
-        wEl.style.width = w + 'px';
-        wEl.style.height = h + 'px';
+        sizeWithOverlap(wEl, w, h);
         if (extra) extra(wEl, w, h);
         return wEl;
+      }
+
+      function circleDots(el, d) {
+        const r = d / 2;
+        addDots(el, d, d, [[r, 0], [d, r], [r, d], [0, r]]);
+      }
+
+      function triHeight(s) { return s * Math.sqrt(3) / 2; }
+
+      function triClip(up) {
+        return up
+          ? 'polygon(50% 0%, 100% 100%, 0% 100%)'
+          : 'polygon(0% 0%, 100% 0%, 50% 100%)';
+      }
+
+      function makeTriFace(color, s, up) {
+        const th = triHeight(s);
+        return makeFace('tri', s, th, color, (el) => {
+          el.style.clipPath = triClip(up);
+        });
+      }
+
+      function makeTriWire(s, up, hidden) {
+        const th = triHeight(s);
+        return makeWire('tri', s, th, hidden, (el) => {
+          el.style.clipPath = triClip(up);
+        });
+      }
+
+      function triDots(el, s, up) {
+        const th = triHeight(s);
+        if (up) addDots(el, s, th, [[s / 2, 0], [s, th], [0, th]]);
+        else addDots(el, s, th, [[0, 0], [s, 0], [s / 2, th]]);
+      }
+
+      function makeCircleFace(color, d, left, top) {
+        const f = makeFace('circle', d, d, color);
+        f.style.left = left + 'px';
+        f.style.top = top + 'px';
+        return f;
+      }
+
+      function makeCircleWire(d, left, top, hidden) {
+        const w = makeWire('circle', d, d, hidden);
+        w.style.left = left + 'px';
+        w.style.top = top + 'px';
+        return w;
       }
 
       function makeHinge(x, y, w, h, origin) {
@@ -197,8 +260,14 @@
         return hinge;
       }
 
-      // ── 正方体 / 长方体（W×H×D：宽×高×深） ──
-      function buildBox(assembly, W, H, D, colors) {
+      // ── 正方体（120×120×120） ──
+      function buildCube(assembly) {
+        const W = 120, H = 120, D = 120;
+        const colors = {
+          bottom:'#1a5c2e', left:'#4a8fd4', right:'#e8d5a0',
+          back:'#b89fd4', front:'#5cd65c', top:'#ffd700'
+        };
+
         const faces = document.createElement('div');
         faces.className = 'faces';
         faces.style.width = W + 'px';
@@ -211,68 +280,74 @@
 
         const h = {};
 
-        function skHinge(cls, x, y, w, ht, origin, lock, child) {
+        function skHinge(x, y, w, ht, origin, lock, child) {
           const el = makeHinge(x, y, w, ht, origin);
-          el.className = 'hinge ' + cls;
           el.style.transform = lock;
           el.appendChild(child);
           skel.appendChild(el);
+          return el;
         }
 
-        // 底面 W×D
+        // 底面
         const fBot = makeFace('face-bottom', W, D, colors.bottom);
         const wBot = makeWire('', W, D, true);
         faces.appendChild(fBot);
         skel.appendChild(wBot);
         addDots(wBot, W, D);
 
-        // 左 D×H
+        // 左
         const hL = makeHinge(-D, 0, D, H, 'right center');
         const fL = makeFace('', D, H, colors.left);
         const wL = makeWire('', D, H, true);
         hL.appendChild(fL);
         faces.appendChild(hL);
-        skHinge('hinge-left', -D, 0, D, H, 'right center', 'rotateY(90deg)', wL);
+        skHinge(-D, 0, D, H, 'right center', 'rotateY(90deg)', wL);
         addDots(wL, D, H);
         h.left = hL;
 
-        // 右 D×H
+        // 右
         const hR = makeHinge(W, 0, D, H, 'left center');
         const fR = makeFace('', D, H, colors.right);
-        const wR = makeWire('', D, H, false);
+        const wR = makeWire('', D, H, true);
         hR.appendChild(fR);
         faces.appendChild(hR);
-        skHinge('hinge-right', W, 0, D, H, 'left center', 'rotateY(-90deg)', wR);
+        skHinge(W, 0, D, H, 'left center', 'rotateY(-90deg)', wR);
         addDots(wR, D, H);
         h.right = hR;
 
-        // 后 W×H
+        // 后
         const hB = makeHinge(0, -H, W, H, 'bottom center');
         const fB = makeFace('', W, H, colors.back);
         const wB = makeWire('', W, H, true);
         hB.appendChild(fB);
         faces.appendChild(hB);
-        skHinge('hinge-back', 0, -H, W, H, 'bottom center', 'rotateX(-90deg)', wB);
+        const skB = makeHinge(0, -H, W, H, 'bottom center');
+        skB.style.transform = 'rotateX(-90deg)';
+        skB.appendChild(wB);
+        skel.appendChild(skB);
         addDots(wB, W, H);
         h.back = hB;
 
-        // 顶 W×D（附在后壁上）
+        // 顶（骨架嵌套在后壁内，展开后仍保持立体线框）
         const hT = makeHinge(0, -D, W, D, 'bottom center');
         const fT = makeFace('', W, D, colors.top);
-        const wT = makeWire('', W, D, false);
+        const wT = makeWire('', W, D, true);
         hT.appendChild(fT);
         hB.appendChild(hT);
-        skHinge('hinge-top', 0, -D, W, D, 'bottom center', 'rotateX(-90deg)', wT);
+        const skT = makeHinge(0, -D, W, D, 'bottom center');
+        skT.style.transform = 'rotateX(-90deg)';
+        skT.appendChild(wT);
+        skB.appendChild(skT);
         addDots(wT, W, D);
         h.top = hT;
 
-        // 前 W×H
+        // 前
         const hF = makeHinge(0, D, W, H, 'top center');
         const fF = makeFace('', W, H, colors.front);
-        const wF = makeWire('', W, H, false);
+        const wF = makeWire('', W, H, true);
         hF.appendChild(fF);
         faces.appendChild(hF);
-        skHinge('hinge-front', 0, D, W, H, 'top center', 'rotateX(90deg)', wF);
+        skHinge(0, D, W, H, 'top center', 'rotateX(90deg)', wF);
         addDots(wF, W, H);
         h.front = hF;
 
@@ -281,8 +356,7 @@
         assembly.appendChild(faces);
         assembly.appendChild(skel);
 
-        const keys = ['left','right','back','front','top'];
-        fold = Object.fromEntries(keys.map(k => [k, 1]));
+        fold = { left:1, right:1, back:1, front:1, top:1 };
 
         applyFn = () => {
           h.left.style.transform  = `rotateY(${ fold.left  * 90}deg)`;
@@ -312,15 +386,442 @@
         };
       }
 
-      const SHAPES = {
-        cube: (a) => buildBox(a, 120, 120, 120, {
+      // ── 长方体（120×80×80） ──
+      function buildCuboid(assembly) {
+        const W = 160, H = 80, D = 80;
+        const colors = {
           bottom:'#1a5c2e', left:'#4a8fd4', right:'#e8d5a0',
           back:'#b89fd4', front:'#5cd65c', top:'#ffd700'
-        }),
-        cuboid: (a) => buildBox(a, 150, 100, 90, {
-          bottom:'#2d6b4f', left:'#5b9bd5', right:'#d4b896',
-          back:'#9b7ec8', front:'#6ecf6e', top:'#f0c040'
-        })
+        };
+
+        const faces = document.createElement('div');
+        faces.className = 'faces';
+        faces.style.width = W + 'px';
+        faces.style.height = D + 'px';
+
+        const skel = document.createElement('div');
+        skel.className = 'skeleton';
+        skel.style.width = W + 'px';
+        skel.style.height = D + 'px';
+
+        const h = {};
+
+        function skHinge(x, y, w, ht, origin, lock, child) {
+          const el = makeHinge(x, y, w, ht, origin);
+          el.style.transform = lock;
+          el.appendChild(child);
+          skel.appendChild(el);
+          return el;
+        }
+
+        const fBot = makeFace('face-bottom', W, D, colors.bottom);
+        const wBot = makeWire('', W, D, true);
+        faces.appendChild(fBot);
+        skel.appendChild(wBot);
+        addDots(wBot, W, D);
+
+        const hL = makeHinge(-D, 0, D, H, 'right center');
+        const fL = makeFace('', D, H, colors.left);
+        const wL = makeWire('', D, H, true);
+        hL.appendChild(fL);
+        faces.appendChild(hL);
+        skHinge(-D, 0, D, H, 'right center', 'rotateY(90deg)', wL);
+        addDots(wL, D, H);
+        h.left = hL;
+
+        const hR = makeHinge(W, 0, D, H, 'left center');
+        const fR = makeFace('', D, H, colors.right);
+        const wR = makeWire('', D, H, true);
+        hR.appendChild(fR);
+        faces.appendChild(hR);
+        skHinge(W, 0, D, H, 'left center', 'rotateY(-90deg)', wR);
+        addDots(wR, D, H);
+        h.right = hR;
+
+        const hB = makeHinge(0, -H, W, H, 'bottom center');
+        const fB = makeFace('', W, H, colors.back);
+        const wB = makeWire('', W, H, true);
+        hB.appendChild(fB);
+        faces.appendChild(hB);
+        const skB = makeHinge(0, -H, W, H, 'bottom center');
+        skB.style.transform = 'rotateX(-90deg)';
+        skB.appendChild(wB);
+        skel.appendChild(skB);
+        addDots(wB, W, H);
+        h.back = hB;
+
+        const hT = makeHinge(0, -D, W, D, 'bottom center');
+        const fT = makeFace('', W, D, colors.top);
+        const wT = makeWire('', W, D, true);
+        hT.appendChild(fT);
+        hB.appendChild(hT);
+        const skT = makeHinge(0, -D, W, D, 'bottom center');
+        skT.style.transform = 'rotateX(-90deg)';
+        skT.appendChild(wT);
+        skB.appendChild(skT);
+        addDots(wT, W, D);
+        h.top = hT;
+
+        const hF = makeHinge(0, D, W, H, 'top center');
+        const fF = makeFace('', W, H, colors.front);
+        const wF = makeWire('', W, H, true);
+        hF.appendChild(fF);
+        faces.appendChild(hF);
+        skHinge(0, D, W, H, 'top center', 'rotateX(90deg)', wF);
+        addDots(wF, W, H);
+        h.front = hF;
+
+        assembly.style.width = W + 'px';
+        assembly.style.height = D + 'px';
+        assembly.appendChild(faces);
+        assembly.appendChild(skel);
+
+        fold = { left:1, right:1, back:1, front:1, top:1 };
+
+        applyFn = () => {
+          h.left.style.transform  = `rotateY(${ fold.left  * 90}deg)`;
+          h.right.style.transform = `rotateY(${-fold.right * 90}deg)`;
+          h.back.style.transform  = `rotateX(${-fold.back  * 90}deg)`;
+          h.front.style.transform = `rotateX(${ fold.front * 90}deg)`;
+          h.top.style.transform   = `rotateX(${-fold.top   * 90}deg)`;
+        };
+
+        resetFoldFn = () => Object.assign(fold, { left:1, right:1, back:1, front:1, top:1 });
+
+        staggerUnfoldFn = (t) => {
+          fold.left  = lerp(fromFold.left,  0, Math.min(t/0.25, 1));
+          fold.right = lerp(fromFold.right, 0, Math.min(t/0.25, 1));
+          fold.back  = lerp(fromFold.back,  0, ease(Math.max(0, Math.min((t-0.15)/0.3, 1))));
+          fold.front = lerp(fromFold.front, 0, ease(Math.max(0, Math.min((t-0.35)/0.3, 1))));
+          fold.top   = lerp(fromFold.top,   0, ease(Math.max(0, Math.min((t-0.55)/0.35, 1))));
+        };
+
+        staggerFoldFn = (t) => {
+          fold.top   = lerp(fromFold.top,   1, ease(Math.min(t/0.35, 1)));
+          fold.front = lerp(fromFold.front, 1, ease(Math.max(0, Math.min((t-0.15)/0.3, 1))));
+          fold.back  = lerp(fromFold.back,  1, ease(Math.max(0, Math.min((t-0.35)/0.3, 1))));
+          const s = ease(Math.max(0, Math.min((t-0.55)/0.3, 1)));
+          fold.left  = lerp(fromFold.left,  1, s);
+          fold.right = lerp(fromFold.right, 1, s);
+        };
+      }
+
+      // ── 圆柱（直径 120，高 130）— 展开图：侧面矩形居中，底圆在上、顶圆在下 ──
+      function buildCylinder(assembly) {
+        const D = 120, H = 130, N = 24;
+        const r = D / 2;
+        const circum = 2 * Math.PI * r;
+        const ang = 360 / N;
+        const panelW = circum / N;
+        const pad = 24;
+        const W = Math.ceil(circum + pad * 2);
+        const totalH = pad * 2 + D + H + D;
+        const pivotX = pad + circum / 2;
+        const pivotY = pad + D + H / 2;
+        const colors = { bottom: '#1a5c2e', side: '#4a8fd4', top: '#ffd700' };
+
+        const faces = document.createElement('div');
+        faces.className = 'faces';
+        faces.style.width = W + 'px';
+        faces.style.height = totalH + 'px';
+
+        const skel = document.createElement('div');
+        skel.className = 'skeleton';
+        skel.style.width = W + 'px';
+        skel.style.height = totalH + 'px';
+
+        const h = { panels: [] };
+
+        function makePivot() {
+          const p = document.createElement('div');
+          p.className = 'hinge cyl-pivot';
+          p.style.cssText = `position:absolute;left:${pivotX}px;top:${pivotY}px;width:0;height:0;transform-style:preserve-3d;`;
+          return p;
+        }
+
+        function panelTransform(i, u) {
+          const flatX = (i - (N - 1) / 2) * panelW;
+          return `translateX(${flatX * (1 - u)}px) rotateY(${-i * ang * u}deg) translateZ(${r * u}px)`;
+        }
+
+        // 底圆（展开图在矩形上方）→ 折叠后封底
+        function capBotWrapTransform(u) {
+          return `translate3d(0, ${H * u}px, ${r * u}px)`;
+        }
+
+        function capBotInnerTransform(u) {
+          return `translate(-${D / 2}px, -${D}px, 0) rotateX(${-90 * u}deg)`;
+        }
+
+        // 顶圆（展开图在矩形下方）→ 折叠后封顶
+        function capTopWrapTransform(u) {
+          return `translate3d(0, ${-H * u}px, ${r * u}px)`;
+        }
+
+        function capTopInnerTransform(u) {
+          return `translate(-${D / 2}px, 0, 0) rotateX(${90 * u}deg)`;
+        }
+
+        function makeCapLeaf(origin, ty, faceColor, wire) {
+          const leaf = document.createElement('div');
+          leaf.className = 'hinge cyl-cap';
+          leaf.style.cssText = `position:absolute;width:${D}px;height:${D}px;transform-style:preserve-3d;transform-origin:${origin};`;
+          leaf.style.transform = `translate(-${D / 2}px, ${ty}px, 0)`;
+          leaf.appendChild(makeFace('circle', D, D, faceColor));
+          if (wire) {
+            const w = makeCircleWire(D, 0, 0, true);
+            leaf.appendChild(w);
+            circleDots(w, D);
+          }
+          return leaf;
+        }
+
+        const pivot = makePivot();
+        const skPivot = makePivot();
+
+        for (let i = 0; i < N; i++) {
+          const panel = makeHinge(-panelW / 2, -H / 2, panelW, H, 'center center');
+          panel.appendChild(makeFace('', panelW, H, colors.side));
+          pivot.appendChild(panel);
+          h.panels.push(panel);
+
+          const skPanel = makeHinge(-panelW / 2, -H / 2, panelW, H, 'center center');
+          skPanel.style.transform = panelTransform(i, 1);
+          skPanel.appendChild(makeWire('', panelW, H, true));
+          skPivot.appendChild(skPanel);
+        }
+
+        // 底圆铰链在侧面上缘（展开图位于矩形上方）
+        const botWrap = makeHinge(-D / 2, -H / 2 - D, D, D);
+        const bot = makeCapLeaf('bottom center', -D, colors.bottom, false);
+        botWrap.appendChild(bot);
+        pivot.appendChild(botWrap);
+        h.botWrap = botWrap;
+        h.bot = bot;
+
+        const skBotWrap = makeHinge(-D / 2, -H / 2 - D, D, D);
+        skBotWrap.style.transform = capBotWrapTransform(1);
+        const skBot = makeCapLeaf('bottom center', -D, null, true);
+        skBot.style.transform = capBotInnerTransform(1);
+        skBotWrap.appendChild(skBot);
+        skPivot.appendChild(skBotWrap);
+
+        // 顶圆铰链在侧面下缘（展开图位于矩形下方）
+        const topWrap = makeHinge(-D / 2, H / 2, D, D);
+        const top = makeCapLeaf('top center', 0, colors.top, false);
+        topWrap.appendChild(top);
+        pivot.appendChild(topWrap);
+        h.topWrap = topWrap;
+        h.top = top;
+
+        const skTopWrap = makeHinge(-D / 2, H / 2, D, D);
+        skTopWrap.style.transform = capTopWrapTransform(1);
+        const skTop = makeCapLeaf('top center', 0, null, true);
+        skTop.style.transform = capTopInnerTransform(1);
+        skTopWrap.appendChild(skTop);
+        skPivot.appendChild(skTopWrap);
+
+        faces.appendChild(pivot);
+        faces.appendChild(skel);
+        skel.appendChild(skPivot);
+
+        assembly.style.width = W + 'px';
+        assembly.style.height = totalH + 'px';
+        assembly.appendChild(faces);
+
+        fold = { side: 1, bot: 1, top: 1 };
+
+        applyFn = () => {
+          h.panels.forEach((panel, i) => {
+            panel.style.transform = panelTransform(i, fold.side);
+          });
+          h.botWrap.style.transform = capBotWrapTransform(fold.bot);
+          h.bot.style.transform = capBotInnerTransform(fold.bot);
+          h.topWrap.style.transform = capTopWrapTransform(fold.top);
+          h.top.style.transform = capTopInnerTransform(fold.top);
+        };
+
+        resetFoldFn = () => Object.assign(fold, { side: 1, bot: 1, top: 1 });
+
+        staggerUnfoldFn = (t) => {
+          fold.side = lerp(fromFold.side, 0, ease(Math.min(t / 0.5, 1)));
+          fold.bot  = lerp(fromFold.bot,  0, ease(Math.max(0, Math.min((t - 0.25) / 0.4, 1))));
+          fold.top  = lerp(fromFold.top,  0, ease(Math.max(0, Math.min((t - 0.35) / 0.4, 1))));
+        };
+
+        staggerFoldFn = (t) => {
+          fold.top  = lerp(fromFold.top,  1, ease(Math.min(t / 0.35, 1)));
+          fold.bot  = lerp(fromFold.bot,  1, ease(Math.max(0, Math.min((t - 0.15) / 0.35, 1))));
+          fold.side = lerp(fromFold.side, 1, ease(Math.max(0, Math.min((t - 0.35) / 0.45, 1))));
+        };
+      }
+
+      // ── 三棱柱（正三角底面边长 120，高 120）— 展开图：底面在上、顶面在下 ──
+      function buildPrism(assembly) {
+        const s = 120, H = 120, th = triHeight(s);
+        const FOLD_SIDE = 120;
+        const colors = {
+          bottom: '#1a5c2e', left: '#4a8fd4', front: '#5cd65c',
+          right: '#e8d5a0', top: '#ffd700'
+        };
+
+        const faces = document.createElement('div');
+        faces.className = 'faces';
+        faces.style.width = (3 * s) + 'px';
+        faces.style.height = (th + H + th) + 'px';
+
+        const skel = document.createElement('div');
+        skel.className = 'skeleton';
+        skel.style.width = (3 * s) + 'px';
+        skel.style.height = (th + H + th) + 'px';
+
+        const h = {};
+
+        function skHinge(x, y, w, ht, origin, lock, child) {
+          const el = makeHinge(x, y, w, ht, origin);
+          el.style.transform = lock;
+          el.appendChild(child);
+          skel.appendChild(el);
+          return el;
+        }
+
+        // 中间矩形（前面）— 作顶/底三角形折叠参照
+        const hFront = makeHinge(s, th, s, H);
+        const fFront = makeFace('', s, H, colors.front);
+        hFront.appendChild(fFront);
+        faces.appendChild(hFront);
+
+        const wFront = makeWire('', s, H, true);
+        wFront.style.left = s + 'px';
+        wFront.style.top = th + 'px';
+        skel.appendChild(wFront);
+        addDots(wFront, s, H);
+
+        // 左侧矩形
+        const hL = makeHinge(0, th, s, H, 'right center');
+        const fL = makeFace('', s, H, colors.left);
+        const wL = makeWire('', s, H, true);
+        hL.appendChild(fL);
+        faces.appendChild(hL);
+        skHinge(0, th, s, H, 'right center', `rotateY(${FOLD_SIDE}deg)`, wL);
+        addDots(wL, s, H);
+        h.left = hL;
+
+        // 右侧矩形
+        const hR = makeHinge(2 * s, th, s, H, 'left center');
+        const fR = makeFace('', s, H, colors.right);
+        const wR = makeWire('', s, H, true);
+        hR.appendChild(fR);
+        faces.appendChild(hR);
+        skHinge(2 * s, th, s, H, 'left center', `rotateY(${-FOLD_SIDE}deg)`, wR);
+        addDots(wR, s, H);
+        h.right = hR;
+
+        // 顶/底三角形：沿前面上下接缝滑动，再 rotateX(±90°) 封口
+        function capBotWrapTransform(u) {
+          return `translateY(${H * u}px)`;
+        }
+
+        function capBotInnerTransform(u) {
+          return `rotateX(${90 * u}deg)`;
+        }
+
+        function capTopWrapTransform(u) {
+          return `translateY(${-H * u}px)`;
+        }
+
+        function capTopInnerTransform(u) {
+          return `rotateX(${-90 * u}deg)`;
+        }
+
+        // 底面：前面顶部接缝上方（局部 y = -th）
+        const hBot = makeHinge(0, -th, s, th);
+        const hBotInner = makeHinge(0, 0, s, th, 'bottom center');
+        const fBot = makeTriFace(colors.bottom, s, true);
+        const wBot = makeTriWire(s, true, true);
+        hBotInner.appendChild(fBot);
+        hBotInner.appendChild(wBot);
+        triDots(wBot, s, true);
+        hBot.appendChild(hBotInner);
+        hFront.appendChild(hBot);
+        h.botWrap = hBot;
+        h.bot = hBotInner;
+
+        // 顶面：前面底部接缝下方（局部 y = H）
+        const hTop = makeHinge(0, H, s, th);
+        const hTopInner = makeHinge(0, 0, s, th, 'top center');
+        const fTop = makeTriFace(colors.top, s, false);
+        const wTop = makeTriWire(s, false, true);
+        hTopInner.appendChild(fTop);
+        hTopInner.appendChild(wTop);
+        triDots(wTop, s, false);
+        hTop.appendChild(hTopInner);
+        hFront.appendChild(hTop);
+        h.topWrap = hTop;
+        h.top = hTopInner;
+
+        // 骨架顶/底（锁定折叠态，与前面局部坐标一致）
+        const skFront = makeHinge(s, th, s, H);
+        const skBot = makeHinge(0, -th, s, th);
+        skBot.style.transform = capBotWrapTransform(1);
+        const skBotInner = makeHinge(0, 0, s, th, 'bottom center');
+        skBotInner.style.transform = capBotInnerTransform(1);
+        const skWBot = makeTriWire(s, true, true);
+        skBotInner.appendChild(skWBot);
+        skBot.appendChild(skBotInner);
+        skFront.appendChild(skBot);
+        skel.appendChild(skFront);
+        triDots(skWBot, s, true);
+
+        const skTop = makeHinge(0, H, s, th);
+        skTop.style.transform = capTopWrapTransform(1);
+        const skTopInner = makeHinge(0, 0, s, th, 'top center');
+        skTopInner.style.transform = capTopInnerTransform(1);
+        const skWTop = makeTriWire(s, false, true);
+        skTopInner.appendChild(skWTop);
+        skTop.appendChild(skTopInner);
+        skFront.appendChild(skTop);
+        triDots(skWTop, s, false);
+
+        assembly.style.width = (3 * s) + 'px';
+        assembly.style.height = (th + H + th) + 'px';
+        assembly.appendChild(faces);
+        assembly.appendChild(skel);
+
+        fold = { left: 1, right: 1, bot: 1, top: 1 };
+
+        applyFn = () => {
+          h.left.style.transform    = `rotateY(${ fold.left  * FOLD_SIDE}deg)`;
+          h.right.style.transform   = `rotateY(${-fold.right * FOLD_SIDE}deg)`;
+          h.botWrap.style.transform = capBotWrapTransform(fold.bot);
+          h.bot.style.transform     = capBotInnerTransform(fold.bot);
+          h.topWrap.style.transform = capTopWrapTransform(fold.top);
+          h.top.style.transform     = capTopInnerTransform(fold.top);
+        };
+
+        resetFoldFn = () => Object.assign(fold, { left: 1, right: 1, bot: 1, top: 1 });
+
+        staggerUnfoldFn = (t) => {
+          fold.left  = lerp(fromFold.left,  0, ease(Math.min(t / 0.28, 1)));
+          fold.right = lerp(fromFold.right, 0, ease(Math.min(t / 0.28, 1)));
+          fold.bot   = lerp(fromFold.bot,   0, ease(Math.max(0, Math.min((t - 0.22) / 0.38, 1))));
+          fold.top   = lerp(fromFold.top,   0, ease(Math.max(0, Math.min((t - 0.42) / 0.38, 1))));
+        };
+
+        staggerFoldFn = (t) => {
+          fold.top   = lerp(fromFold.top,   1, ease(Math.min(t / 0.38, 1)));
+          fold.bot   = lerp(fromFold.bot,   1, ease(Math.max(0, Math.min((t - 0.2) / 0.38, 1))));
+          const s2 = ease(Math.max(0, Math.min((t - 0.42) / 0.28, 1)));
+          fold.left  = lerp(fromFold.left,  1, s2);
+          fold.right = lerp(fromFold.right, 1, s2);
+        };
+      }
+
+      const SHAPES = {
+        cube: buildCube,
+        cuboid: buildCuboid,
+        cylinder: buildCylinder,
+        prism: buildPrism
       };
 
       function beginPhase(name) {
@@ -330,6 +831,8 @@
       }
 
       function tick(now) {
+        applyFn();
+        if (animPaused) return;
         const elapsed = now - t0;
         if (phase === 'hold') {
           resetFoldFn();
@@ -347,15 +850,20 @@
           if (elapsed > DUR) beginPhase('hold');
         }
         applyFn();
-        animId = requestAnimationFrame(tick);
+        if (!animPaused) animId = requestAnimationFrame(tick);
       }
 
       function loadShape(name) {
         if (animId) cancelAnimationFrame(animId);
+        animPaused = false;
         const assembly = document.getElementById('assembly');
         assembly.innerHTML = '';
+        assembly.style.transform = name === 'cylinder'
+          ? 'rotateX(-10deg) rotateY(-18deg)'
+          : 'rotateX(-28deg) rotateY(-38deg)';
         SHAPES[name](assembly);
         applyFn();
+        if (animPaused) return;
         phase = 'hold';
         t0 = performance.now();
         fromFold = { ...fold };
