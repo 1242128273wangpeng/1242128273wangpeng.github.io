@@ -111,34 +111,6 @@
 
     .wire.hidden { border-style: dashed; }
 
-    .face.tri {
-      background: transparent;
-      border: none;
-    }
-
-    .face.tri .tri-fill {
-      position: absolute;
-      inset: 0;
-      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-      border: 2.5px solid #111;
-      box-sizing: border-box;
-    }
-
-    .wire.tri .tri-fill {
-      position: absolute;
-      inset: 0;
-      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-      border: 2.5px solid #111;
-      box-sizing: border-box;
-    }
-
-    .wire.tri.hidden .tri-fill { border-style: dashed; }
-
-    .face.circle, .wire.circle {
-      border-radius: 50%;
-      border: 2.5px solid #111;
-    }
-
     .dot {
       position: absolute;
       width: 7px; height: 7px;
@@ -156,8 +128,6 @@
     <h2>选择图形</h2>
     <button type="button" data-shape="cube" class="active">正方体</button>
     <button type="button" data-shape="cuboid">长方体</button>
-    <button type="button" data-shape="pyramid">三角锥</button>
-    <button type="button" data-shape="cylinder">圆柱</button>
   </aside>
 
   <main class="viewport">
@@ -195,15 +165,6 @@
           d.style.top  = y + 'px';
           el.appendChild(d);
         });
-      }
-
-      function triDots(el, w, h) {
-        addDots(el, w, h, [[w/2, 0], [0, h], [w, h]]);
-      }
-
-      function circleDots(el, d) {
-        const r = d / 2;
-        addDots(el, d, d, [[r, 0], [d, r], [r, d], [0, r]]);
       }
 
       function makeFace(cls, w, h, color, extra) {
@@ -351,215 +312,6 @@
         };
       }
 
-      // ── 三角锥 ──
-      function buildPyramid(assembly) {
-        const TW = 130; // 三角形宽
-        const TH = 112; // 三角形高 ≈ 等边
-
-        const faces = document.createElement('div');
-        faces.className = 'faces';
-        faces.style.width = (TW * 2.5) + 'px';
-        faces.style.height = (TH * 2.5) + 'px';
-
-        const skel = document.createElement('div');
-        skel.className = 'skeleton';
-        skel.style.width = (TW * 2.5) + 'px';
-        skel.style.height = (TH * 2.5) + 'px';
-
-        const h = {};
-
-        function makeTri(color, hidden) {
-          const f = document.createElement('div');
-          f.className = 'face tri';
-          f.style.width = TW + 'px';
-          f.style.height = TH + 'px';
-          const fill = document.createElement('div');
-          fill.className = 'tri-fill';
-          fill.style.background = color;
-          f.appendChild(fill);
-
-          const w = document.createElement('div');
-          w.className = 'wire tri' + (hidden ? ' hidden' : '');
-          w.style.width = TW + 'px';
-          w.style.height = TH + 'px';
-          const wfill = document.createElement('div');
-          wfill.className = 'tri-fill';
-          w.appendChild(wfill);
-
-          return { f, w };
-        }
-
-        const colors = {
-          base: '#5cd65c', side1: '#4a8fd4', side2: '#e8d5a0', side3: '#ffd700'
-        };
-
-        // 底面三角形（锚定在中心）
-        const baseTri = makeTri(colors.base, true);
-        const fBase = baseTri.f;
-        fBase.style.left = (TW * 2.5 - TW) / 2 + 'px';
-        fBase.style.top = (TH * 2.5 - TH) / 2 + 'px';
-        faces.appendChild(fBase);
-        const wBase = baseTri.w;
-        wBase.style.left = (TW * 2.5 - TW) / 2 + 'px';
-        wBase.style.top = (TH * 2.5 - TH) / 2 + 'px';
-        skel.appendChild(wBase);
-        triDots(wBase, TW, TH);
-
-        const centerX = (TW * 2.5 - TW) / 2;
-        const centerY = (TH * 2.5 - TH) / 2;
-
-        // 侧面1 - 在底面上方（绕底面顶边旋转）
-        const side1Tri = makeTri(colors.side1, false);
-        const hSide1 = makeHinge(centerX, centerY, TW, TH, 'bottom center');
-        hSide1.appendChild(side1Tri.f);
-        faces.appendChild(hSide1);
-        const skSide1 = makeHinge(centerX, centerY, TW, TH, 'bottom center');
-        skSide1.style.transform = 'rotateX(-90deg)';
-        skSide1.appendChild(side1Tri.w);
-        skel.appendChild(skSide1);
-        triDots(side1Tri.w, TW, TH);
-        h.side1 = hSide1;
-
-        // 侧面2 - 在底面左下（绕底面左边旋转）
-        const side2Tri = makeTri(colors.side2, false);
-        const hSide2 = makeHinge(centerX, centerY, TW, TH, 'right center');
-        hSide2.appendChild(side2Tri.f);
-        faces.appendChild(hSide2);
-        const skSide2 = makeHinge(centerX, centerY, TW, TH, 'right center');
-        skSide2.style.transform = 'rotateY(90deg)';
-        skSide2.appendChild(side2Tri.w);
-        skel.appendChild(skSide2);
-        triDots(side2Tri.w, TW, TH);
-        h.side2 = hSide2;
-
-        // 侧面3 - 在底面右下（绕底面右边旋转）
-        const side3Tri = makeTri(colors.side3, false);
-        const hSide3 = makeHinge(centerX, centerY, TW, TH, 'left center');
-        hSide3.appendChild(side3Tri.f);
-        faces.appendChild(hSide3);
-        const skSide3 = makeHinge(centerX, centerY, TW, TH, 'left center');
-        skSide3.style.transform = 'rotateY(-90deg)';
-        skSide3.appendChild(side3Tri.w);
-        skel.appendChild(skSide3);
-        triDots(side3Tri.w, TW, TH);
-        h.side3 = hSide3;
-
-        assembly.style.width = (TW * 2.5) + 'px';
-        assembly.style.height = (TH * 2.5) + 'px';
-        assembly.appendChild(faces);
-        assembly.appendChild(skel);
-
-        fold = { side1: 1, side2: 1, side3: 1 };
-
-        applyFn = () => {
-          h.side1.style.transform = `rotateX(${-fold.side1 * 90}deg)`;
-          h.side2.style.transform = `rotateY(${ fold.side2 * 90}deg)`;
-          h.side3.style.transform = `rotateY(${-fold.side3 * 90}deg)`;
-        };
-
-        resetFoldFn = () => Object.assign(fold, { side1: 1, side2: 1, side3: 1 });
-
-        staggerUnfoldFn = (t) => {
-          fold.side1 = lerp(fromFold.side1, 0, ease(Math.min(t / 0.25, 1)));
-          fold.side2 = lerp(fromFold.side2, 0, ease(Math.max(0, Math.min((t - 0.15) / 0.25, 1))));
-          fold.side3 = lerp(fromFold.side3, 0, ease(Math.max(0, Math.min((t - 0.3) / 0.25, 1))));
-        };
-
-        staggerFoldFn = (t) => {
-          fold.side3 = lerp(fromFold.side3, 1, ease(Math.min(t / 0.25, 1)));
-          fold.side2 = lerp(fromFold.side2, 1, ease(Math.max(0, Math.min((t - 0.15) / 0.25, 1))));
-          fold.side1 = lerp(fromFold.side1, 1, ease(Math.max(0, Math.min((t - 0.3) / 0.25, 1))));
-        };
-      }
-
-      // ── 圆柱 ──
-      function buildCylinder(assembly) {
-        const D = 120;
-        const H = 130;
-        const RW = Math.round(Math.PI * D); // 侧面展开宽 ≈ 周长
-
-        const faces = document.createElement('div');
-        faces.className = 'faces';
-        faces.style.width = Math.max(D, RW) + 'px';
-        faces.style.height = (D + H + D) + 'px';
-
-        const skel = document.createElement('div');
-        skel.className = 'skeleton';
-        skel.style.width = Math.max(D, RW) + 'px';
-        skel.style.height = (D + H + D) + 'px';
-
-        const h = {};
-        const colors = { bottom: '#1a5c2e', side: '#4a8fd4', top: '#ffd700' };
-
-        // 底圆
-        const fBot = makeFace('circle', D, D, colors.bottom);
-        fBot.style.borderRadius = '50%';
-        fBot.style.left = (Math.max(D, RW) - D) / 2 + 'px';
-        fBot.style.top = '0px';
-        const wBot = makeWire('circle', D, D, true);
-        wBot.style.left = (Math.max(D, RW) - D) / 2 + 'px';
-        wBot.style.top = '0px';
-        faces.appendChild(fBot);
-        skel.appendChild(wBot);
-        circleDots(wBot, D);
-
-        // 侧面：铰接在底圆下方，折起为柱面
-        const hSide = makeHinge((Math.max(D, RW) - RW) / 2, D, RW, H, 'top center');
-        const fSide = makeFace('', RW, H, colors.side);
-        hSide.appendChild(fSide);
-        faces.appendChild(hSide);
-        const wSide = makeWire('', RW, H, false);
-        const skSide = makeHinge((Math.max(D, RW) - RW) / 2, D, RW, H, 'top center');
-        skSide.style.transform = 'rotateX(90deg)';
-        skSide.appendChild(wSide);
-        skel.appendChild(skSide);
-        addDots(wSide, RW, H);
-        [0.25, 0.5, 0.75].forEach(p => {
-          const line = document.createElement('i');
-          line.style.cssText = `position:absolute;left:${p*RW}px;top:0;width:2px;height:${H}px;background:repeating-linear-gradient(to bottom,#111 0 5px,transparent 5px 9px);transform-origin:top center;`;
-          skSide.appendChild(line);
-        });
-        h.side = hSide;
-
-        // 顶圆铰接在侧面下方
-        const hTop = makeHinge((Math.max(D, RW) - D) / 2, D + H, D, D, 'top center');
-        const fTop = makeFace('circle', D, D, colors.top);
-        fTop.style.borderRadius = '50%';
-        hTop.appendChild(fTop);
-        hSide.appendChild(hTop);
-        const skTop = makeHinge((Math.max(D, RW) - D) / 2, D + H, D, D, 'top center');
-        skTop.style.transform = 'rotateX(90deg)';
-        const wTop = makeWire('circle', D, D, false);
-        skTop.appendChild(wTop);
-        skSide.appendChild(skTop);
-        circleDots(wTop, D);
-        h.top = hTop;
-
-        assembly.style.width = Math.max(D, RW) + 'px';
-        assembly.style.height = (D + H + D) + 'px';
-        assembly.appendChild(faces);
-        assembly.appendChild(skel);
-
-        fold = { side: 1, top: 1 };
-
-        applyFn = () => {
-          h.side.style.transform = `rotateX(${ fold.side * 90}deg)`;
-          h.top.style.transform  = `rotateX(${ fold.top * 90}deg)`;
-        };
-
-        resetFoldFn = () => Object.assign(fold, { side:1, top:1 });
-
-        staggerUnfoldFn = (t) => {
-          fold.side = lerp(fromFold.side, 0, ease(Math.min(t/0.55, 1)));
-          fold.top  = lerp(fromFold.top,  0, ease(Math.max(0, Math.min((t-0.35)/0.45, 1))));
-        };
-
-        staggerFoldFn = (t) => {
-          fold.top  = lerp(fromFold.top,  1, ease(Math.min(t/0.4, 1)));
-          fold.side = lerp(fromFold.side, 1, ease(Math.max(0, Math.min((t-0.3)/0.5, 1))));
-        };
-      }
-
       const SHAPES = {
         cube: (a) => buildBox(a, 120, 120, 120, {
           bottom:'#1a5c2e', left:'#4a8fd4', right:'#e8d5a0',
@@ -568,9 +320,7 @@
         cuboid: (a) => buildBox(a, 150, 100, 90, {
           bottom:'#2d6b4f', left:'#5b9bd5', right:'#d4b896',
           back:'#9b7ec8', front:'#6ecf6e', top:'#f0c040'
-        }),
-        pyramid: buildPyramid,
-        cylinder: buildCylinder,
+        })
       };
 
       function beginPhase(name) {
